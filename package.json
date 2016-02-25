@@ -1,0 +1,40 @@
+{
+  "name": "pdfmake-document",
+  "description": "A pdfmake based lib to generate pdf's",
+  "version": "0.1.0",
+  "author": "Orbin",
+  "keywords": [
+    "pdfmake",
+    "pdf",
+    "generate",
+    "document"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orbin-ch/pdfmake-document"
+  },
+  "main": "dist/pdfmake-document.js",
+  "license": "MIT",
+  "dependencies": {
+    "pdfmake": "^0.1.18"
+  },
+  "devDependencies": {
+    "babel-core": "^6.4.0",
+    "babel-loader": "^6.2.1",
+    "babel-polyfill": "^6.3.14",
+    "babel-preset-es2015": "^6.3.13",
+    "clean-webpack-plugin": "^0.1.8",
+    "jshint-loader": "^0.8.3",
+    "json-loader": "^0.5.4",
+    "string-replace-webpack-plugin": "0.0.3",
+    "webpack": "^1.12.11"
+  },
+  "scripts": {
+    "build": "webpack"
+  },
+  "babel": {
+    "presets": [
+      "es2015"
+    ]
+  }
+}
