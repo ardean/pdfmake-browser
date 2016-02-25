@@ -1,19 +1,19 @@
 {
-  "name": "pdfmake-document",
+  "name": "pdfmake-browser",
   "description": "A pdfmake based lib to generate pdf's",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Orbin",
   "keywords": [
     "pdfmake",
     "pdf",
     "generate",
-    "document"
+    "browser"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/orbin-ch/pdfmake-document"
+    "url": "https://github.com/orbin-ch/pdfmake-browser"
   },
-  "main": "dist/pdfmake-document.js",
+  "main": "dist/pdfmake-browser.js",
   "license": "MIT",
   "dependencies": {
     "lodash": "^3.1.0",

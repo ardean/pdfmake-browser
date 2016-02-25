@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("buffer"), require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie"));
+		module.exports = factory(require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie"));
 	else if(typeof define === 'function' && define.amd)
-		define(["buffer", "lodash", "stream", "zlib", "events", "unicode-trie"], factory);
+		define(["lodash", "stream", "zlib", "events", "unicode-trie"], factory);
 	else {
-		var a = typeof exports === 'object' ? factory(require("buffer"), require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie")) : factory(root["buffer"], root["lodash"], root["stream"], root["zlib"], root["events"], root["unicode-trie"]);
+		var a = typeof exports === 'object' ? factory(require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie")) : factory(root["lodash"], root["stream"], root["zlib"], root["events"], root["unicode-trie"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
-})(this, function(__WEBPACK_EXTERNAL_MODULE_1__, __WEBPACK_EXTERNAL_MODULE_3__, __WEBPACK_EXTERNAL_MODULE_20__, __WEBPACK_EXTERNAL_MODULE_24__, __WEBPACK_EXTERNAL_MODULE_52__, __WEBPACK_EXTERNAL_MODULE_54__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_19__, __WEBPACK_EXTERNAL_MODULE_23__, __WEBPACK_EXTERNAL_MODULE_51__, __WEBPACK_EXTERNAL_MODULE_53__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -54,7 +54,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {"use strict";
+	"use strict";
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
@@ -62,41 +62,28 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-	var _pdfmake = __webpack_require__(2);
+	var _pdfmake = __webpack_require__(1);
 
 	var _pdfmake2 = _interopRequireDefault(_pdfmake);
-
-	var _fs = __webpack_require__(21);
-
-	var _fs2 = _interopRequireDefault(_fs);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	var defaultFonts = {
-	  Roboto: {
-	    normal: "Roboto-Regular.ttf",
-	    bold: "Roboto-Medium.ttf",
-	    italics: "Roboto-Italic.ttf",
-	    bolditalics: "Roboto-Italic.ttf"
-	  }
-	};
+	var defaultFonts = {};
 
-	var Document = function () {
-	  function Document(definition, vfs, fonts) {
-	    _classCallCheck(this, Document);
+	var Pdf = function () {
+	  function Pdf(definition, fonts) {
+	    _classCallCheck(this, Pdf);
 
 	    this.definition = definition;
-	    this.vfs = vfs;
 	    this.fonts = fonts || defaultFonts;
 	  }
 
-	  _createClass(Document, [{
+	  _createClass(Pdf, [{
 	    key: "getPdfKitDoc",
 	    value: function getPdfKitDoc(options) {
 	      var printer = new _pdfmake2.default(this.fonts);
-	      _fs2.default.applyVfs(this.vfs);
 	      return printer.createPdfKitDocument(this.definition, options);
 	    }
 	  }, {
@@ -162,35 +149,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	  }]);
 
-	  return Document;
+	  return Pdf;
 	}();
 
-	exports.default = Document;
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+	exports.default = Pdf;
 
 /***/ },
 /* 1 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
-
-/***/ },
-/* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	/* global window */
 	'use strict';
 
-	var _ = __webpack_require__(3);
-	var FontProvider = __webpack_require__(4);
-	var LayoutBuilder = __webpack_require__(6);
-	var PdfKit = __webpack_require__(19);
-	var PDFReference = __webpack_require__(23);
-	var sizes = __webpack_require__(64);
-	var ImageMeasure = __webpack_require__(65);
-	var textDecorator = __webpack_require__(66);
-	var FontProvider = __webpack_require__(4);
+	var _ = __webpack_require__(2);
+	var FontProvider = __webpack_require__(3);
+	var LayoutBuilder = __webpack_require__(5);
+	var PdfKit = __webpack_require__(18);
+	var PDFReference = __webpack_require__(22);
+	var sizes = __webpack_require__(63);
+	var ImageMeasure = __webpack_require__(64);
+	var textDecorator = __webpack_require__(65);
+	var FontProvider = __webpack_require__(3);
 
 	////////////////////////////////////////
 	// PdfPrinter
@@ -545,24 +525,24 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 	/* temporary browser extension */
-	PdfPrinter.prototype.fs = __webpack_require__(21);
+	PdfPrinter.prototype.fs = __webpack_require__(20);
 
+
+/***/ },
+/* 2 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_2__;
 
 /***/ },
 /* 3 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_3__;
-
-/***/ },
-/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var _ = __webpack_require__(3);
-	var FontWrapper = __webpack_require__(5);
+	var _ = __webpack_require__(2);
+	var FontWrapper = __webpack_require__(4);
 
 	function typeName(bold, italics){
 		var type = 'normal';
@@ -622,13 +602,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 5 */
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var _ = __webpack_require__(3);
+	var _ = __webpack_require__(2);
 
 	function FontWrapper(pdfkitDoc, path, fontName){
 		this.MAX_CHAR_TYPES = 92;
@@ -733,26 +713,26 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 6 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var _ = __webpack_require__(3);
-	var TraversalTracker = __webpack_require__(7);
-	var DocMeasure = __webpack_require__(8);
-	var DocumentContext = __webpack_require__(14);
-	var PageElementWriter = __webpack_require__(15);
-	var ColumnCalculator = __webpack_require__(11);
-	var TableProcessor = __webpack_require__(18);
-	var Line = __webpack_require__(17);
-	var pack = __webpack_require__(12).pack;
-	var offsetVector = __webpack_require__(12).offsetVector;
-	var fontStringify = __webpack_require__(12).fontStringify;
-	var isFunction = __webpack_require__(12).isFunction;
-	var TextTools = __webpack_require__(9);
-	var StyleContextStack = __webpack_require__(10);
+	var _ = __webpack_require__(2);
+	var TraversalTracker = __webpack_require__(6);
+	var DocMeasure = __webpack_require__(7);
+	var DocumentContext = __webpack_require__(13);
+	var PageElementWriter = __webpack_require__(14);
+	var ColumnCalculator = __webpack_require__(10);
+	var TableProcessor = __webpack_require__(17);
+	var Line = __webpack_require__(16);
+	var pack = __webpack_require__(11).pack;
+	var offsetVector = __webpack_require__(11).offsetVector;
+	var fontStringify = __webpack_require__(11).fontStringify;
+	var isFunction = __webpack_require__(11).isFunction;
+	var TextTools = __webpack_require__(8);
+	var StyleContextStack = __webpack_require__(9);
 
 	function addAll(target, otherArray){
 	  _.each(otherArray, function(item){
@@ -1314,7 +1294,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 7 */
+/* 6 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -1370,18 +1350,18 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 8 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var TextTools = __webpack_require__(9);
-	var StyleContextStack = __webpack_require__(10);
-	var ColumnCalculator = __webpack_require__(11);
-	var fontStringify = __webpack_require__(12).fontStringify;
-	var pack = __webpack_require__(12).pack;
-	var qrEncoder = __webpack_require__(13);
+	var TextTools = __webpack_require__(8);
+	var StyleContextStack = __webpack_require__(9);
+	var ColumnCalculator = __webpack_require__(10);
+	var fontStringify = __webpack_require__(11).fontStringify;
+	var pack = __webpack_require__(11).pack;
+	var qrEncoder = __webpack_require__(12);
 
 	/**
 	* @private
@@ -1874,7 +1854,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 9 */
+/* 8 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2139,7 +2119,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 10 */
+/* 9 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2312,7 +2292,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 11 */
+/* 10 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2453,7 +2433,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 12 */
+/* 11 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2521,7 +2501,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 13 */
+/* 12 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -3267,13 +3247,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 14 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var TraversalTracker = __webpack_require__(7);
+	var TraversalTracker = __webpack_require__(6);
 
 	/**
 	* Creates an instance of DocumentContext - a store for current x, y positions and available width/height.
@@ -3544,13 +3524,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 15 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var ElementWriter = __webpack_require__(16);
+	var ElementWriter = __webpack_require__(15);
 
 	/**
 	* Creates an instance of PageElementWriter - an extended ElementWriter
@@ -3702,16 +3682,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 16 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var Line = __webpack_require__(17);
-	var pack = __webpack_require__(12).pack;
-	var offsetVector = __webpack_require__(12).offsetVector;
-	var DocumentContext = __webpack_require__(14);
+	var Line = __webpack_require__(16);
+	var pack = __webpack_require__(11).pack;
+	var offsetVector = __webpack_require__(11).offsetVector;
+	var DocumentContext = __webpack_require__(13);
 
 	/**
 	* Creates an instance of ElementWriter - a line/vector writer, which adds
@@ -3969,7 +3949,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 17 */
+/* 16 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -4044,13 +4024,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 18 */
+/* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var ColumnCalculator = __webpack_require__(11);
+	var ColumnCalculator = __webpack_require__(10);
 
 	function TableProcessor(tableNode) {
 	  this.tableNode = tableNode;
@@ -4355,10 +4335,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 19 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 
 	/*
 	PDFDocument - represents an entire PDF document
@@ -4370,15 +4350,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  stream = __webpack_require__(20);
+	  stream = __webpack_require__(19);
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
-	  PDFObject = __webpack_require__(22);
+	  PDFObject = __webpack_require__(21);
 
-	  PDFReference = __webpack_require__(23);
+	  PDFReference = __webpack_require__(22);
 
-	  PDFPage = __webpack_require__(25);
+	  PDFPage = __webpack_require__(24);
 
 	  PDFDocument = (function(superClass) {
 	    var mixin;
@@ -4440,17 +4420,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	      return results;
 	    };
 
-	    mixin(__webpack_require__(26));
+	    mixin(__webpack_require__(25));
 
-	    mixin(__webpack_require__(28));
+	    mixin(__webpack_require__(27));
 
-	    mixin(__webpack_require__(30));
+	    mixin(__webpack_require__(29));
 
-	    mixin(__webpack_require__(50));
+	    mixin(__webpack_require__(49));
 
-	    mixin(__webpack_require__(58));
+	    mixin(__webpack_require__(57));
 
-	    mixin(__webpack_require__(63));
+	    mixin(__webpack_require__(62));
 
 	    PDFDocument.prototype.addPage = function(options) {
 	      var pages;
@@ -4606,79 +4586,26 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+
+/***/ },
+/* 19 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_19__;
 
 /***/ },
 /* 20 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_20__;
+	"use strict";
+
+	module.exports = {};
 
 /***/ },
 /* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(__dirname, Buffer) {"use strict";
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-	function fixFilename(filename) {
-	  if (filename.indexOf(__dirname) === 0) {
-	    filename = filename.substring(__dirname.length);
-	  }
-
-	  if (filename.indexOf("/") === 0) {
-	    filename = filename.substring(1);
-	  }
-
-	  return filename;
-	}
-
-	var VirtualFileSystem = function () {
-	  function VirtualFileSystem() {
-	    _classCallCheck(this, VirtualFileSystem);
-
-	    this.fileSystem = {};
-	    this.base64System = {};
-	  }
-
-	  _createClass(VirtualFileSystem, [{
-	    key: "readFileSync",
-	    value: function readFileSync(filename) {
-	      filename = fixFilename(filename);
-
-	      var base64content = this.base64System[filename];
-	      if (base64content) {
-	        return new Buffer(base64content, "base64");
-	      }
-
-	      return this.fileSystem[filename];
-	    }
-	  }, {
-	    key: "writeFileSync",
-	    value: function writeFileSync(filename, content) {
-	      this.fileSystem[fixFilename(filename)] = content;
-	    }
-	  }, {
-	    key: "applyVfs",
-	    value: function applyVfs(data) {
-	      this.base64System = data;
-	    }
-	  }]);
-
-	  return VirtualFileSystem;
-	}();
-
-	module.exports = new VirtualFileSystem();
-	/* WEBPACK VAR INJECTION */}.call(exports, "/", __webpack_require__(1).Buffer))
-
-/***/ },
-/* 22 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 
 	/*
 	PDFObject - converts JavaScript types into their corrisponding PDF types.
@@ -4780,17 +4707,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  module.exports = PDFObject;
 
-	  PDFReference = __webpack_require__(23);
+	  PDFReference = __webpack_require__(22);
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 23 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 
 	/*
 	PDFReference - represents a reference to another object in the PDF object heirarchy
@@ -4801,7 +4727,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var PDFObject, PDFReference, zlib,
 	    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-	  zlib = __webpack_require__(24);
+	  zlib = __webpack_require__(23);
 
 	  PDFReference = (function() {
 	    function PDFReference(document, id, data) {
@@ -4888,20 +4814,19 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  module.exports = PDFReference;
 
-	  PDFObject = __webpack_require__(22);
+	  PDFObject = __webpack_require__(21);
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
+
+/***/ },
+/* 23 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_23__;
 
 /***/ },
 /* 24 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_24__;
-
-/***/ },
-/* 25 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5077,14 +5002,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 26 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFGradient, PDFLinearGradient, PDFRadialGradient, namedColors, ref;
 
-	  ref = __webpack_require__(27), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
+	  ref = __webpack_require__(26), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
 
 	  module.exports = {
 	    initColor: function() {
@@ -5398,7 +5323,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 27 */
+/* 26 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5631,7 +5556,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 28 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5639,7 +5564,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var KAPPA, SVGPath,
 	    slice = [].slice;
 
-	  SVGPath = __webpack_require__(29);
+	  SVGPath = __webpack_require__(28);
 
 	  KAPPA = 4.0 * ((Math.sqrt(2) - 1.0) / 3.0);
 
@@ -5882,7 +5807,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 29 */
+/* 28 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -6254,14 +6179,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 30 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFFont;
 
-	  PDFFont = __webpack_require__(31);
+	  PDFFont = __webpack_require__(30);
 
 	  module.exports = {
 	    initFonts: function() {
@@ -6329,10 +6254,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 31 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer, __dirname) {// Generated by CoffeeScript 1.10.0
+	/* WEBPACK VAR INJECTION */(function(__dirname) {// Generated by CoffeeScript 1.10.0
 
 	/*
 	PDFFont - embeds fonts in PDF documents
@@ -6342,13 +6267,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	(function() {
 	  var AFMFont, PDFFont, Subset, TTFFont, fs;
 
-	  TTFFont = __webpack_require__(32);
+	  TTFFont = __webpack_require__(31);
 
-	  AFMFont = __webpack_require__(48);
+	  AFMFont = __webpack_require__(47);
 
-	  Subset = __webpack_require__(49);
+	  Subset = __webpack_require__(48);
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
 	  PDFFont = (function() {
 	    var STANDARD_FONTS, toUnicodeCmap;
@@ -6626,43 +6551,43 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer, "/"))
+	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
 
 /***/ },
-/* 32 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var CmapTable, DFont, Data, Directory, GlyfTable, HeadTable, HheaTable, HmtxTable, LocaTable, MaxpTable, NameTable, OS2Table, PostTable, TTFFont, fs;
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
-	  DFont = __webpack_require__(34);
+	  DFont = __webpack_require__(33);
 
-	  Directory = __webpack_require__(35);
+	  Directory = __webpack_require__(34);
 
-	  NameTable = __webpack_require__(36);
+	  NameTable = __webpack_require__(35);
 
-	  HeadTable = __webpack_require__(39);
+	  HeadTable = __webpack_require__(38);
 
-	  CmapTable = __webpack_require__(40);
+	  CmapTable = __webpack_require__(39);
 
-	  HmtxTable = __webpack_require__(41);
+	  HmtxTable = __webpack_require__(40);
 
-	  HheaTable = __webpack_require__(42);
+	  HheaTable = __webpack_require__(41);
 
-	  MaxpTable = __webpack_require__(43);
+	  MaxpTable = __webpack_require__(42);
 
-	  PostTable = __webpack_require__(44);
+	  PostTable = __webpack_require__(43);
 
-	  OS2Table = __webpack_require__(45);
+	  OS2Table = __webpack_require__(44);
 
-	  LocaTable = __webpack_require__(46);
+	  LocaTable = __webpack_require__(45);
 
-	  GlyfTable = __webpack_require__(47);
+	  GlyfTable = __webpack_require__(46);
 
 	  TTFFont = (function() {
 	    TTFFont.open = function(filename, name) {
@@ -6763,7 +6688,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 33 */
+/* 32 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -6961,20 +6886,20 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 34 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var DFont, Data, Directory, NameTable, fs;
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
-	  Directory = __webpack_require__(35);
+	  Directory = __webpack_require__(34);
 
-	  NameTable = __webpack_require__(36);
+	  NameTable = __webpack_require__(35);
 
 	  DFont = (function() {
 	    DFont.open = function(filename) {
@@ -7074,15 +6999,15 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 35 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var Data, Directory,
 	    slice = [].slice;
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  Directory = (function() {
 	    var checksum;
@@ -7169,10 +7094,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 36 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7181,11 +7105,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
-	  utils = __webpack_require__(38);
+	  utils = __webpack_require__(37);
 
 	  NameTable = (function(superClass) {
 	    var subsetTag;
@@ -7321,7 +7245,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 37 */
+/* 36 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7362,7 +7286,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 38 */
+/* 37 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7446,7 +7370,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 39 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7455,9 +7379,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  HeadTable = (function(superClass) {
 	    extend(HeadTable, superClass);
@@ -7522,7 +7446,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 40 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7531,9 +7455,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  CmapTable = (function(superClass) {
 	    extend(CmapTable, superClass);
@@ -7818,7 +7742,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 41 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7827,9 +7751,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  HmtxTable = (function(superClass) {
 	    extend(HmtxTable, superClass);
@@ -7910,7 +7834,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7919,9 +7843,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  HheaTable = (function(superClass) {
 	    extend(HheaTable, superClass);
@@ -7982,7 +7906,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -7991,9 +7915,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  MaxpTable = (function(superClass) {
 	    extend(MaxpTable, superClass);
@@ -8054,7 +7978,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -8063,9 +7987,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  PostTable = (function(superClass) {
 	    var POSTSCRIPT_GLYPHS;
@@ -8196,7 +8120,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 45 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -8205,7 +8129,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
 	  OS2Table = (function(superClass) {
 	    extend(OS2Table, superClass);
@@ -8293,7 +8217,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 46 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -8302,9 +8226,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  LocaTable = (function(superClass) {
 	    extend(LocaTable, superClass);
@@ -8386,7 +8310,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 47 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -8396,9 +8320,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    hasProp = {}.hasOwnProperty,
 	    slice = [].slice;
 
-	  Table = __webpack_require__(37);
+	  Table = __webpack_require__(36);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
 	  GlyfTable = (function(superClass) {
 	    extend(GlyfTable, superClass);
@@ -8552,14 +8476,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 48 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var AFMFont, fs;
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
 	  AFMFont = (function() {
 	    var WIN_ANSI_MAP, characters;
@@ -8696,7 +8620,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 49 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -8704,9 +8628,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var CmapTable, Subset, utils,
 	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-	  CmapTable = __webpack_require__(40);
+	  CmapTable = __webpack_require__(39);
 
-	  utils = __webpack_require__(38);
+	  utils = __webpack_require__(37);
 
 	  Subset = (function() {
 	    function Subset(font) {
@@ -8859,14 +8783,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 50 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var LineWrapper;
 
-	  LineWrapper = __webpack_require__(51);
+	  LineWrapper = __webpack_require__(50);
 
 	  module.exports = {
 	    initText: function() {
@@ -9173,7 +9097,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 51 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -9182,9 +9106,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  EventEmitter = __webpack_require__(52).EventEmitter;
+	  EventEmitter = __webpack_require__(51).EventEmitter;
 
-	  LineBreaker = __webpack_require__(53);
+	  LineBreaker = __webpack_require__(52);
 
 	  LineWrapper = (function(superClass) {
 	    extend(LineWrapper, superClass);
@@ -9431,26 +9355,26 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 52 */
+/* 51 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_52__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_51__;
 
 /***/ },
-/* 53 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.7.1
 	(function() {
 	  var AI, AL, BA, BK, CB, CI_BRK, CJ, CP_BRK, CR, DI_BRK, ID, IN_BRK, LF, LineBreaker, NL, NS, PR_BRK, SA, SG, SP, UnicodeTrie, WJ, XX, characterClasses, classTrie, pairTable, _ref, _ref1;
 
-	  UnicodeTrie = __webpack_require__(54);
+	  UnicodeTrie = __webpack_require__(53);
 
-	  classTrie = new UnicodeTrie(__webpack_require__(55));
+	  classTrie = new UnicodeTrie(__webpack_require__(54));
 
-	  _ref = __webpack_require__(56), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+	  _ref = __webpack_require__(55), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
 
-	  _ref1 = __webpack_require__(57), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+	  _ref1 = __webpack_require__(56), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
 
 	  LineBreaker = (function() {
 	    var Break, mapClass, mapFirst;
@@ -9598,13 +9522,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 54 */
+/* 53 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_54__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_53__;
 
 /***/ },
-/* 55 */
+/* 54 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -42231,7 +42155,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 56 */
+/* 55 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -42322,7 +42246,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 57 */
+/* 56 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -42345,14 +42269,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 58 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFImage;
 
-	  PDFImage = __webpack_require__(59);
+	  PDFImage = __webpack_require__(58);
 
 	  module.exports = {
 	    initImages: function() {
@@ -42431,13 +42355,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 59 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 
 	/*
 	PDFImage - embeds images in PDF documents
@@ -42447,13 +42370,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	(function() {
 	  var Data, JPEG, PDFImage, PNG, fs;
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
-	  Data = __webpack_require__(33);
+	  Data = __webpack_require__(32);
 
-	  JPEG = __webpack_require__(60);
+	  JPEG = __webpack_require__(59);
 
-	  PNG = __webpack_require__(61);
+	  PNG = __webpack_require__(60);
 
 	  PDFImage = (function() {
 	    function PDFImage() {}
@@ -42489,10 +42412,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 60 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -42500,7 +42422,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var JPEG, fs,
 	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
 	  JPEG = (function() {
 	    var MARKERS;
@@ -42576,16 +42498,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 61 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.10.0
+	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PNG, PNGImage, zlib;
 
-	  zlib = __webpack_require__(24);
+	  zlib = __webpack_require__(23);
 
-	  PNG = __webpack_require__(62);
+	  PNG = __webpack_require__(61);
 
 	  PNGImage = (function() {
 	    function PNGImage(data, label) {
@@ -42738,13 +42660,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 62 */
+/* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {// Generated by CoffeeScript 1.4.0
+	// Generated by CoffeeScript 1.4.0
 
 	/*
 	# MIT LICENSE
@@ -42770,9 +42691,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	(function() {
 	  var PNG, fs, zlib;
 
-	  fs = __webpack_require__(21);
+	  fs = __webpack_require__(20);
 
-	  zlib = __webpack_require__(24);
+	  zlib = __webpack_require__(23);
 
 	  module.exports = PNG = (function() {
 
@@ -43062,10 +42983,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	}).call(this);
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 63 */
+/* 62 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -43204,7 +43124,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 64 */
+/* 63 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -43262,14 +43182,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 65 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {/* jslint node: true */
+	/* jslint node: true */
 	'use strict';
 
-	var pdfKit = __webpack_require__(19);
-	var PDFImage = __webpack_require__(59);
+	var pdfKit = __webpack_require__(18);
+	var PDFImage = __webpack_require__(58);
 
 	function ImageMeasure(pdfDoc, imageDictionary) {
 		this.pdfDoc = pdfDoc;
@@ -43307,10 +43227,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	module.exports = ImageMeasure;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(1).Buffer))
 
 /***/ },
-/* 66 */
+/* 65 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */

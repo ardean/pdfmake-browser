@@ -1,26 +1,16 @@
 import PdfPrinter from "pdfmake";
-import fs from "fs";
 
-const defaultFonts = {
-  Roboto: {
-    normal: "Roboto-Regular.ttf",
-    bold: "Roboto-Medium.ttf",
-    italics: "Roboto-Italic.ttf",
-    bolditalics: "Roboto-Italic.ttf"
-  }
-};
+const defaultFonts = {};
 
-export default class Document {
-  constructor(definition, vfs, fonts) {
-    this.definition = definition;
-    this.vfs = vfs;
+export default class Pdf {
+  constructor(template, fonts) {
+    this.template = template;
     this.fonts = fonts || defaultFonts;
   }
 
   getPdfKitDoc(options) {
     const printer = new PdfPrinter(this.fonts);
-    fs.applyVfs(this.vfs);
-    return printer.createPdfKitDocument(this.definition, options);
+    return printer.createPdfKitDocument(this.template, options);
   }
 
   getBuffer(options, done) {

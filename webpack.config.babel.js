@@ -6,17 +6,18 @@ export default {
   entry: "./src",
   output: {
     path: "./dist",
-    filename: "pdfmake-document.js",
+    filename: "pdfmake-browser.js",
     libraryTarget: "umd"
   },
   resolve: {
     alias: {
-      fs: path.join(__dirname, "./src/vfs.js")
+      fs: path.join(__dirname, "./src/fakeFs.js")
     }
   },
+  node: {
+    Buffer: false
+  },
   externals: (context, request, done) => {
-    if (/buffer[\/\\]index.js$/.test(request)) return done(null, "buffer");
-
     if (!request.startsWith("./") &&
       !request.startsWith("../") &&
       !request.startsWith("pdfmake") &&
