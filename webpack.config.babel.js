@@ -14,6 +14,20 @@ export default {
       fs: path.join(__dirname, "./src/vfs.js")
     }
   },
+  externals: (context, request, done) => {
+    if (/buffer[\/\\]index.js$/.test(request)) return done(null, "buffer");
+
+    if (!request.startsWith("./") &&
+      !request.startsWith("../") &&
+      !request.startsWith("pdfmake") &&
+      !request.startsWith("pdfkit") &&
+      !request.startsWith("linebreak") &&
+      !request.startsWith("png-js") &&
+      request !== "fs"
+    ) return done(null, request);
+
+    done();
+  },
   module: {
     preLoaders: [{
       test: /\.js$/,

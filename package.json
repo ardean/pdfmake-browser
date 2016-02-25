@@ -16,7 +16,8 @@
   "main": "dist/pdfmake-document.js",
   "license": "MIT",
   "dependencies": {
-    "pdfmake": "^0.1.18"
+    "lodash": "^3.1.0",
+    "unicode-trie": "^0.3.1"
   },
   "devDependencies": {
     "babel-core": "^6.4.0",
@@ -26,6 +27,7 @@
     "clean-webpack-plugin": "^0.1.8",
     "jshint-loader": "^0.8.3",
     "json-loader": "^0.5.4",
+    "pdfmake": "^0.1.18",
     "string-replace-webpack-plugin": "0.0.3",
     "webpack": "^1.12.11"
   },
