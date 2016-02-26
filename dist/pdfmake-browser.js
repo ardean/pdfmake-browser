@@ -73,24 +73,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	var defaultFonts = {};
 
 	var Pdf = function () {
-	  function Pdf(definition, fonts) {
+	  function Pdf(template, fonts) {
 	    _classCallCheck(this, Pdf);
 
-	    this.definition = definition;
+	    this.template = template;
 	    this.fonts = fonts || defaultFonts;
 	  }
 
 	  _createClass(Pdf, [{
 	    key: "getPdfKitDoc",
 	    value: function getPdfKitDoc(options) {
+	      options = options || {};
+
 	      var printer = new _pdfmake2.default(this.fonts);
-	      return printer.createPdfKitDocument(this.definition, options);
+	      return printer.createPdfKitDocument(this.template, options);
 	    }
 	  }, {
 	    key: "getBuffer",
 	    value: function getBuffer(options, done) {
-	      var doc = this.getPdfKitDoc(options);
+	      options = options || {};
 
+	      var doc = this.getPdfKitDoc(options);
 	      var chunks = [];
 	      doc.on("data", function (chunk) {
 	        chunks.push(chunk);
@@ -105,6 +108,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: "getBase64",
 	    value: function getBase64(options, done) {
+	      options = options || {};
+
 	      this.getBuffer(options, function (buffer) {
 	        done(buffer.toString("base64"));
 	      });
@@ -112,23 +117,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: "getDataUrl",
 	    value: function getDataUrl(options, done) {
+	      options = options || {};
+
 	      this.getBase64(options, function (data) {
 	        done("data:application/pdf;base64," + data);
 	      });
 	    }
 	  }, {
 	    key: "print",
-	    value: function print(filename) {
+	    value: function print(filename, options) {
 	      filename = filename || "download.pdf";
+	      options = options || {};
 
 	      if (window.cordova && window.plugins.PrintPDF) {
-	        this.getBase64(function (data) {
+	        this.getBase64(options, function (data) {
 	          window.plugins.PrintPDF.print({
 	            data: data
 	          });
 	        });
 	      } else {
-	        this.getBuffer(function (data) {
+	        this.getBuffer(options, function (data) {
 	          var blob = new Blob([data], {
 	            type: "application/pdf"
 	          });
