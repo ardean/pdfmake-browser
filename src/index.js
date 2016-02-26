@@ -9,13 +9,16 @@ export default class Pdf {
   }
 
   getPdfKitDoc(options) {
+    options = options || {};
+    
     const printer = new PdfPrinter(this.fonts);
     return printer.createPdfKitDocument(this.template, options);
   }
 
   getBuffer(options, done) {
-    const doc = this.getPdfKitDoc(options);
+    options = options || {};
 
+    const doc = this.getPdfKitDoc(options);
     const chunks = [];
     doc.on("data", (chunk) => {
       chunks.push(chunk);
@@ -29,28 +32,33 @@ export default class Pdf {
   }
 
   getBase64(options, done) {
+    options = options || {};
+
     this.getBuffer(options, (buffer) => {
       done(buffer.toString("base64"));
     });
   }
 
   getDataUrl(options, done) {
+    options = options || {};
+
     this.getBase64(options, (data) => {
       done(`data:application/pdf;base64,${data}`);
     });
   }
 
-  print(filename) {
+  print(filename, options) {
     filename = filename || "download.pdf";
+    options = options || {};
 
     if (window.cordova && window.plugins.PrintPDF) {
-      this.getBase64((data) => {
+      this.getBase64(options, (data) => {
         window.plugins.PrintPDF.print({
           data: data
         });
       });
     } else {
-      this.getBuffer((data) => {
+      this.getBuffer(options, (data) => {
         const blob = new Blob([data], {
           type: "application/pdf"
         });
