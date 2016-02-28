@@ -74,10 +74,25 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var Pdf = function () {
 	  function Pdf(template, fonts) {
+	    var _this = this;
+
 	    _classCallCheck(this, Pdf);
 
 	    this.template = template;
 	    this.fonts = fonts || defaultFonts;
+
+	    Object.keys(this.fonts).forEach(function (fontName) {
+	      var font = _this.fonts[fontName];
+	      Object.keys(font).forEach(function (typeName) {
+	        var type = font[typeName];
+	        if (typeof type === "string") {
+	          type = new Buffer(type, "base64");
+	        }
+	        font[typeName] = type;
+	      });
+
+	      _this.fonts[fontName] = font;
+	    });
 	  }
 
 	  _createClass(Pdf, [{

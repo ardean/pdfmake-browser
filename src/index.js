@@ -6,11 +6,24 @@ export default class Pdf {
   constructor(template, fonts) {
     this.template = template;
     this.fonts = fonts || defaultFonts;
+    
+    Object.keys(this.fonts).forEach((fontName) => {
+      const font = this.fonts[fontName];
+      Object.keys(font).forEach((typeName) => {
+        let type = font[typeName];
+        if (typeof type === "string") {
+          type = new Buffer(type, "base64");
+        }
+        font[typeName] = type;
+      });
+
+      this.fonts[fontName] = font;
+    });
   }
 
   getPdfKitDoc(options) {
     options = options || {};
-    
+
     const printer = new PdfPrinter(this.fonts);
     return printer.createPdfKitDocument(this.template, options);
   }
