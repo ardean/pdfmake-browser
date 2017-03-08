@@ -23,6 +23,7 @@ export default {
       !request.startsWith("pdfmake") &&
       !request.startsWith("pdfkit") &&
       !request.startsWith("linebreak") &&
+      !request.startsWith("base64-js") &&
       !request.startsWith("png-js") &&
       request !== "fs"
     ) return done(null, request);
