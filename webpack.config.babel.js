@@ -17,6 +17,18 @@ export default {
   node: {
     Buffer: false
   },
+  externals: (context, request, done) => {
+    if (!request.startsWith("./") &&
+      !request.startsWith("../") &&
+      !request.startsWith("pdfmake") &&
+      !request.startsWith("pdfkit") &&
+      !request.startsWith("linebreak") &&
+      !request.startsWith("png-js") &&
+      request !== "fs"
+    ) return done(null, request);
+
+    done();
+  },
   module: {
     loaders: [{
       test: /\.js$/,
