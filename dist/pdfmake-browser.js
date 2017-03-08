@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie"));
+		module.exports = factory(require("lodash"), require("unicode-trie"), require("base64-js"), require("stream"), require("zlib"), require("fontkit"), require("events"));
 	else if(typeof define === 'function' && define.amd)
-		define(["lodash", "stream", "zlib", "events", "unicode-trie"], factory);
+		define(["lodash", "unicode-trie", "base64-js", "stream", "zlib", "fontkit", "events"], factory);
 	else {
-		var a = typeof exports === 'object' ? factory(require("lodash"), require("stream"), require("zlib"), require("events"), require("unicode-trie")) : factory(root["lodash"], root["stream"], root["zlib"], root["events"], root["unicode-trie"]);
+		var a = typeof exports === 'object' ? factory(require("lodash"), require("unicode-trie"), require("base64-js"), require("stream"), require("zlib"), require("fontkit"), require("events")) : factory(root["lodash"], root["unicode-trie"], root["base64-js"], root["stream"], root["zlib"], root["fontkit"], root["events"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
-})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_19__, __WEBPACK_EXTERNAL_MODULE_23__, __WEBPACK_EXTERNAL_MODULE_51__, __WEBPACK_EXTERNAL_MODULE_53__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_9__, __WEBPACK_EXTERNAL_MODULE_11__, __WEBPACK_EXTERNAL_MODULE_24__, __WEBPACK_EXTERNAL_MODULE_27__, __WEBPACK_EXTERNAL_MODULE_35__, __WEBPACK_EXTERNAL_MODULE_41__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -182,18 +182,17 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
-	/* global window */
 	'use strict';
 
 	var _ = __webpack_require__(2);
 	var FontProvider = __webpack_require__(3);
-	var LayoutBuilder = __webpack_require__(5);
-	var PdfKit = __webpack_require__(18);
-	var PDFReference = __webpack_require__(22);
-	var sizes = __webpack_require__(63);
-	var ImageMeasure = __webpack_require__(64);
-	var textDecorator = __webpack_require__(65);
-	var FontProvider = __webpack_require__(3);
+	var LayoutBuilder = __webpack_require__(4);
+	var PdfKit = __webpack_require__(23);
+	var sizes = __webpack_require__(53);
+	var ImageMeasure = __webpack_require__(54);
+	var textDecorator = __webpack_require__(55);
+
+	_.noConflict();
 
 	////////////////////////////////////////
 	// PdfPrinter
@@ -209,7 +208,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *		normal: 'fonts/Roboto-Regular.ttf',
 	 *		bold: 'fonts/Roboto-Medium.ttf',
 	 *		italics: 'fonts/Roboto-Italic.ttf',
-	 *		bolditalics: 'fonts/Roboto-Italic.ttf'
+	 *		bolditalics: 'fonts/Roboto-MediumItalic.ttf'
 	 *	}
 	 * };
 	 *
@@ -231,10 +230,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @param {Number} docDefinition.pageSize.width width
 	 * @param {Number} docDefinition.pageSize.height height
 	 * @param {Object} [docDefinition.pageMargins] page margins (pdfkit units)
+	 * @param {Number} docDefinition.maxPagesNumber maximum number of pages to render
 	 *
 	 * @example
 	 *
 	 * var docDefinition = {
+	 * 	info: {
+	 *		title: 'awesome Document',
+	 *		author: 'john doe',
+	 *		subject: 'subject of document',
+	 *		keywords: 'keywords for document',
+	 * 	},
 	 *	content: [
 	 *		'First paragraph',
 	 *		'Second paragraph, this time a little bit longer',
@@ -248,157 +254,222 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *	}
 	 * }
 	 *
-	 * var pdfDoc = printer.createPdfKitDocument(docDefinition);
+	 * var pdfKitDoc = printer.createPdfKitDocument(docDefinition);
 	 *
-	 * pdfDoc.pipe(fs.createWriteStream('sample.pdf'));
-	 * pdfDoc.end();
+	 * pdfKitDoc.pipe(fs.createWriteStream('sample.pdf'));
+	 * pdfKitDoc.end();
 	 *
 	 * @return {Object} a pdfKit document object which can be saved or encode to data-url
 	 */
-	PdfPrinter.prototype.createPdfKitDocument = function(docDefinition, options) {
+	PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 		options = options || {};
 
-		var pageSize = pageSize2widthAndHeight(docDefinition.pageSize || 'a4');
+		var pageSize = fixPageSize(docDefinition.pageSize, docDefinition.pageOrientation);
 
-	  if(docDefinition.pageOrientation === 'landscape') {
-	    pageSize = { width: pageSize.height, height: pageSize.width};
-	  }
-		pageSize.orientation = docDefinition.pageOrientation === 'landscape' ? docDefinition.pageOrientation : 'portrait';
+		this.pdfKitDoc = new PdfKit({size: [pageSize.width, pageSize.height], autoFirstPage: false, compress: docDefinition.compress || true});
+		setMetadata(docDefinition, this.pdfKitDoc);
 
-		this.pdfKitDoc = new PdfKit({ size: [ pageSize.width, pageSize.height ], compress: false});
-		this.pdfKitDoc.info.Producer = 'pdfmake';
-		this.pdfKitDoc.info.Creator = 'pdfmake';
 		this.fontProvider = new FontProvider(this.fontDescriptors, this.pdfKitDoc);
 
-	  docDefinition.images = docDefinition.images || {};
+		docDefinition.images = docDefinition.images || {};
 
-		var builder = new LayoutBuilder(
-			pageSize,
-			fixPageMargins(docDefinition.pageMargins || 40),
-	        new ImageMeasure(this.pdfKitDoc, docDefinition.images));
+		var builder = new LayoutBuilder(pageSize, fixPageMargins(docDefinition.pageMargins || 40), new ImageMeasure(this.pdfKitDoc, docDefinition.images));
 
-	  registerDefaultTableLayouts(builder);
-	  if (options.tableLayouts) {
-	    builder.registerTableLayouts(options.tableLayouts);
-	  }
+		registerDefaultTableLayouts(builder);
+		if (options.tableLayouts) {
+			builder.registerTableLayouts(options.tableLayouts);
+		}
 
-		var pages = builder.layoutDocument(docDefinition.content, this.fontProvider, docDefinition.styles || {}, docDefinition.defaultStyle || { fontSize: 12, font: 'Roboto' }, docDefinition.background, docDefinition.header, docDefinition.footer, docDefinition.images, docDefinition.watermark, docDefinition.pageBreakBefore);
+		var pages = builder.layoutDocument(docDefinition.content, this.fontProvider, docDefinition.styles || {}, docDefinition.defaultStyle || {fontSize: 12, font: 'Roboto'}, docDefinition.background, docDefinition.header, docDefinition.footer, docDefinition.images, docDefinition.watermark, docDefinition.pageBreakBefore);
+		var maxNumberPages = docDefinition.maxPagesNumber || -1;
+		if (typeof maxNumberPages === 'number' && maxNumberPages > -1) {
+			pages = pages.slice(0, maxNumberPages);
+		}
 
-		renderPages(pages, this.fontProvider, this.pdfKitDoc);
+		// if pageSize.height is set to Infinity, calculate the actual height of the page that
+		// was laid out using the height of each of the items in the page.
+		if (pageSize.height === Infinity) {
+			var pageHeight = calculatePageHeight(pages, docDefinition.pageMargins);
+			this.pdfKitDoc.options.size = [pageSize.width, pageHeight];
+		}
 
-		if(options.autoPrint){
-	        var jsRef = this.pdfKitDoc.ref({
-				S: 'JavaScript',
-				JS: new StringObject('this.print\\(true\\);')
+		renderPages(pages, this.fontProvider, this.pdfKitDoc, options.progressCallback);
+
+		if (options.autoPrint) {
+			var printActionRef = this.pdfKitDoc.ref({
+				Type: 'Action',
+				S: 'Named',
+				N: 'Print'
 			});
-			var namesRef = this.pdfKitDoc.ref({
-				Names: [new StringObject('EmbeddedJS'), new PDFReference(this.pdfKitDoc, jsRef.id)],
-			});
-
-			jsRef.end();
-			namesRef.end();
-
-			this.pdfKitDoc._root.data.Names = {
-				JavaScript: new PDFReference(this.pdfKitDoc, namesRef.id)
-			};
+			this.pdfKitDoc._root.data.OpenAction = printActionRef;
+			printActionRef.end();
 		}
 		return this.pdfKitDoc;
 	};
 
+	function setMetadata(docDefinition, pdfKitDoc) {
+		pdfKitDoc.info.Producer = 'pdfmake';
+		pdfKitDoc.info.Creator = 'pdfmake';
+
+		// pdf kit maintains the uppercase fieldnames from pdf spec
+		// to keep the pdfmake api consistent, the info field are defined lowercase
+		if (docDefinition.info) {
+			var info = docDefinition.info;
+			// check for falsey an set null, so that pdfkit always get either null or value
+			pdfKitDoc.info.Title = info.title ? info.title : null;
+			pdfKitDoc.info.Author = info.author ? info.author : null;
+			pdfKitDoc.info.Subject = info.subject ? info.subject : null;
+			pdfKitDoc.info.Keywords = info.keywords ? info.keywords : null;
+			pdfKitDoc.info.CreationDate = info.creationDate ? info.creationDate : null;
+		}
+	}
+
+	function calculatePageHeight(pages, margins) {
+		function getItemHeight(item) {
+			if (typeof item.item.getHeight === 'function') {
+				return item.item.getHeight();
+			} else if (item.item._height) {
+				return item.item._height;
+			} else {
+				// TODO: add support for next item types
+				return 0;
+			}
+		}
+
+		var fixedMargins = fixPageMargins(margins || 40);
+		var height = fixedMargins.top + fixedMargins.bottom;
+		pages.forEach(function (page) {
+			page.items.forEach(function (item) {
+				height += getItemHeight(item);
+			});
+		});
+		return height;
+	}
+
+	function fixPageSize(pageSize, pageOrientation) {
+		// if pageSize.height is set to auto, set the height to infinity so there are no page breaks.
+		if (pageSize && pageSize.height === 'auto') {
+			pageSize.height = Infinity;
+		}
+
+		var size = pageSize2widthAndHeight(pageSize || 'A4');
+		if (((pageOrientation === 'portrait') && (size.width > size.height)) ||
+				((pageOrientation === 'landscape') && (size.width < size.height))) { // swap page sizes
+			size = {width: size.height, height: size.width};
+		}
+		size.orientation = size.width > size.height ? 'landscape' : 'portrait';
+		return size;
+	}
+
 	function fixPageMargins(margin) {
-	    if (!margin) return null;
+		if (!margin) {
+			return null;
+		}
 
-	    if (typeof margin === 'number' || margin instanceof Number) {
-	        margin = { left: margin, right: margin, top: margin, bottom: margin };
-	    } else if (margin instanceof Array) {
-	        if (margin.length === 2) {
-	            margin = { left: margin[0], top: margin[1], right: margin[0], bottom: margin[1] };
-	        } else if (margin.length === 4) {
-	            margin = { left: margin[0], top: margin[1], right: margin[2], bottom: margin[3] };
-	        } else throw 'Invalid pageMargins definition';
-	    }
+		if (typeof margin === 'number' || margin instanceof Number) {
+			margin = {left: margin, right: margin, top: margin, bottom: margin};
+		} else if (Array.isArray(margin)) {
+			if (margin.length === 2) {
+				margin = {left: margin[0], top: margin[1], right: margin[0], bottom: margin[1]};
+			} else if (margin.length === 4) {
+				margin = {left: margin[0], top: margin[1], right: margin[2], bottom: margin[3]};
+			} else {
+				throw 'Invalid pageMargins definition';
+			}
+		}
 
-	    return margin;
+		return margin;
 	}
 
 	function registerDefaultTableLayouts(layoutBuilder) {
-	  layoutBuilder.registerTableLayouts({
-	    noBorders: {
-	      hLineWidth: function(i) { return 0; },
-	      vLineWidth: function(i) { return 0; },
-	      paddingLeft: function(i) { return i && 4 || 0; },
-	      paddingRight: function(i, node) { return (i < node.table.widths.length - 1) ? 4 : 0; },
-	    },
-	    headerLineOnly: {
-	      hLineWidth: function(i, node) {
-	        if (i === 0 || i === node.table.body.length) return 0;
-	        return (i === node.table.headerRows) ? 2 : 0;
-	      },
-	      vLineWidth: function(i) { return 0; },
-	      paddingLeft: function(i) {
-	        return i === 0 ? 0 : 8;
-	      },
-	      paddingRight: function(i, node) {
-	        return (i === node.table.widths.length - 1) ? 0 : 8;
-	      }
-	    },
-	    lightHorizontalLines: {
-	      hLineWidth: function(i, node) {
-	        if (i === 0 || i === node.table.body.length) return 0;
-	        return (i === node.table.headerRows) ? 2 : 1;
-	      },
-	      vLineWidth: function(i) { return 0; },
-	      hLineColor: function(i) { return i === 1 ? 'black' : '#aaa'; },
-	      paddingLeft: function(i) {
-	        return i === 0 ? 0 : 8;
-	      },
-	      paddingRight: function(i, node) {
-	        return (i === node.table.widths.length - 1) ? 0 : 8;
-	      }
-	    }
-	  });
+		/*jshint unused: false */
+		layoutBuilder.registerTableLayouts({
+			noBorders: {
+				hLineWidth: function (i) {
+					return 0;
+				},
+				vLineWidth: function (i) {
+					return 0;
+				},
+				paddingLeft: function (i) {
+					return i && 4 || 0;
+				},
+				paddingRight: function (i, node) {
+					return (i < node.table.widths.length - 1) ? 4 : 0;
+				}
+			},
+			headerLineOnly: {
+				hLineWidth: function (i, node) {
+					if (i === 0 || i === node.table.body.length) {
+						return 0;
+					}
+					return (i === node.table.headerRows) ? 2 : 0;
+				},
+				vLineWidth: function (i) {
+					return 0;
+				},
+				paddingLeft: function (i) {
+					return i === 0 ? 0 : 8;
+				},
+				paddingRight: function (i, node) {
+					return (i === node.table.widths.length - 1) ? 0 : 8;
+				}
+			},
+			lightHorizontalLines: {
+				hLineWidth: function (i, node) {
+					if (i === 0 || i === node.table.body.length) {
+						return 0;
+					}
+					return (i === node.table.headerRows) ? 2 : 1;
+				},
+				vLineWidth: function (i) {
+					return 0;
+				},
+				hLineColor: function (i) {
+					return i === 1 ? 'black' : '#aaa';
+				},
+				paddingLeft: function (i) {
+					return i === 0 ? 0 : 8;
+				},
+				paddingRight: function (i, node) {
+					return (i === node.table.widths.length - 1) ? 0 : 8;
+				}
+			}
+		});
 	}
-
-	var defaultLayout = {
-	  hLineWidth: function(i, node) { return 1; }, //return node.table.headerRows && i === node.table.headerRows && 3 || 0; },
-	  vLineWidth: function(i, node) { return 1; },
-	  hLineColor: function(i, node) { return 'black'; },
-	  vLineColor: function(i, node) { return 'black'; },
-	  paddingLeft: function(i, node) { return 4; }, //i && 4 || 0; },
-	  paddingRight: function(i, node) { return 4; }, //(i < node.table.widths.length - 1) ? 4 : 0; },
-	  paddingTop: function(i, node) { return 2; },
-	  paddingBottom: function(i, node) { return 2; }
-	};
 
 	function pageSize2widthAndHeight(pageSize) {
-	    if (typeof pageSize == 'string' || pageSize instanceof String) {
-	        var size = sizes[pageSize.toUpperCase()];
-	        if (!size) throw ('Page size ' + pageSize + ' not recognized');
-	        return { width: size[0], height: size[1] };
-	    }
+		if (typeof pageSize === 'string' || pageSize instanceof String) {
+			var size = sizes[pageSize.toUpperCase()];
+			if (!size) {
+				throw 'Page size ' + pageSize + ' not recognized';
+			}
+			return {width: size[0], height: size[1]};
+		}
 
-	    return pageSize;
-	}
-
-	function StringObject(str){
-		this.isString = true;
-		this.toString = function(){
-			return str;
-		};
+		return pageSize;
 	}
 
 	function updatePageOrientationInOptions(currentPage, pdfKitDoc) {
 		var previousPageOrientation = pdfKitDoc.options.size[0] > pdfKitDoc.options.size[1] ? 'landscape' : 'portrait';
 
-		if(currentPage.pageSize.orientation !== previousPageOrientation) {
+		if (currentPage.pageSize.orientation !== previousPageOrientation) {
 			var width = pdfKitDoc.options.size[0];
 			var height = pdfKitDoc.options.size[1];
 			pdfKitDoc.options.size = [height, width];
 		}
 	}
 
-	function renderPages(pages, fontProvider, pdfKitDoc) {
-	  pdfKitDoc._pdfMakePages = pages;
+	function renderPages(pages, fontProvider, pdfKitDoc, progressCallback) {
+		pdfKitDoc._pdfMakePages = pages;
+		pdfKitDoc.addPage();
+
+		var totalItems = progressCallback && _.sumBy(pages, function (page) {
+			return page.items.length;
+		});
+		var renderedItems = 0;
+		progressCallback = progressCallback || function () {};
+
 		for (var i = 0; i < pages.length; i++) {
 			if (i > 0) {
 				updatePageOrientationInOptions(pages[i], pdfKitDoc);
@@ -406,118 +477,127 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			var page = pages[i];
-	    for(var ii = 0, il = page.items.length; ii < il; ii++) {
-	        var item = page.items[ii];
-	        switch(item.type) {
-	          case 'vector':
-	              renderVector(item.item, pdfKitDoc);
-	              break;
-	          case 'line':
-	              renderLine(item.item, item.item.x, item.item.y, pdfKitDoc);
-	              break;
-	          case 'image':
-	              renderImage(item.item, item.item.x, item.item.y, pdfKitDoc);
-	              break;
-					}
-	    }
-	    if(page.watermark){
-	      renderWatermark(page, pdfKitDoc);
+			for (var ii = 0, il = page.items.length; ii < il; ii++) {
+				var item = page.items[ii];
+				switch (item.type) {
+					case 'vector':
+						renderVector(item.item, pdfKitDoc);
+						break;
+					case 'line':
+						renderLine(item.item, item.item.x, item.item.y, pdfKitDoc);
+						break;
+					case 'image':
+						renderImage(item.item, item.item.x, item.item.y, pdfKitDoc);
+						break;
+				}
+				renderedItems++;
+				progressCallback(renderedItems / totalItems);
+			}
+			if (page.watermark) {
+				renderWatermark(page, pdfKitDoc);
+			}
 		}
-
-	    fontProvider.setFontRefsToPdfDoc();
-	  }
 	}
 
 	function renderLine(line, x, y, pdfKitDoc) {
 		x = x || 0;
 		y = y || 0;
 
+		var lineHeight = line.getHeight();
 		var ascenderHeight = line.getAscenderHeight();
+		var descent = lineHeight - ascenderHeight;
 
 		textDecorator.drawBackground(line, x, y, pdfKitDoc);
 
 		//TODO: line.optimizeInlines();
-		for(var i = 0, l = line.inlines.length; i < l; i++) {
+		for (var i = 0, l = line.inlines.length; i < l; i++) {
 			var inline = line.inlines[i];
+			var shiftToBaseline = lineHeight - ((inline.font.ascender / 1000) * inline.fontSize) - descent;
 
 			pdfKitDoc.fill(inline.color || 'black');
 
-			pdfKitDoc.save();
-			pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
-
-
-	    var encoded = inline.font.encode(inline.text);
-			pdfKitDoc.addContent('BT');
-
-			pdfKitDoc.addContent('' + (x + inline.x) + ' ' + (pdfKitDoc.page.height - y - ascenderHeight) + ' Td');
-			pdfKitDoc.addContent('/' + encoded.fontId + ' ' + inline.fontSize + ' Tf');
-
-	        pdfKitDoc.addContent('<' + encoded.encodedText + '> Tj');
-
-			pdfKitDoc.addContent('ET');
-			pdfKitDoc.restore();
+			pdfKitDoc._font = inline.font;
+			pdfKitDoc.fontSize(inline.fontSize);
+			pdfKitDoc.text(inline.text, x + inline.x, y + shiftToBaseline, {
+				lineBreak: false,
+				textWidth: inline.width,
+				wordCount: 1,
+				link: inline.link
+			});
 		}
 
 		textDecorator.drawDecorations(line, x, y, pdfKitDoc);
-
 	}
 
-	function renderWatermark(page, pdfKitDoc){
+	function renderWatermark(page, pdfKitDoc) {
 		var watermark = page.watermark;
 
-		pdfKitDoc.fill('black');
-		pdfKitDoc.opacity(0.6);
+		pdfKitDoc.fill(watermark.color);
+		pdfKitDoc.opacity(watermark.opacity);
 
 		pdfKitDoc.save();
-		pdfKitDoc.transform(1, 0, 0, -1, 0, pdfKitDoc.page.height);
 
-		var angle = Math.atan2(pdfKitDoc.page.height, pdfKitDoc.page.width) * 180/Math.PI;
-		pdfKitDoc.rotate(angle, {origin: [pdfKitDoc.page.width/2, pdfKitDoc.page.height/2]});
+		var angle = Math.atan2(pdfKitDoc.page.height, pdfKitDoc.page.width) * -180 / Math.PI;
+		pdfKitDoc.rotate(angle, {origin: [pdfKitDoc.page.width / 2, pdfKitDoc.page.height / 2]});
 
-	  var encoded = watermark.font.encode(watermark.text);
-		pdfKitDoc.addContent('BT');
-		pdfKitDoc.addContent('' + (pdfKitDoc.page.width/2 - watermark.size.size.width/2) + ' ' + (pdfKitDoc.page.height/2 - watermark.size.size.height/4) + ' Td');
-		pdfKitDoc.addContent('/' + encoded.fontId + ' ' + watermark.size.fontSize + ' Tf');
-		pdfKitDoc.addContent('<' + encoded.encodedText + '> Tj');
-		pdfKitDoc.addContent('ET');
+		var x = pdfKitDoc.page.width / 2 - watermark.size.size.width / 2;
+		var y = pdfKitDoc.page.height / 2 - watermark.size.size.height / 4;
+
+		pdfKitDoc._font = watermark.font;
+		pdfKitDoc.fontSize(watermark.size.fontSize);
+		pdfKitDoc.text(watermark.text, x, y, {lineBreak: false});
+
 		pdfKitDoc.restore();
 	}
 
-	function renderVector(vector, pdfDoc) {
+	function renderVector(vector, pdfKitDoc) {
 		//TODO: pdf optimization (there's no need to write all properties everytime)
-		pdfDoc.lineWidth(vector.lineWidth || 1);
+		pdfKitDoc.lineWidth(vector.lineWidth || 1);
 		if (vector.dash) {
-			pdfDoc.dash(vector.dash.length, { space: vector.dash.space || vector.dash.length });
+			pdfKitDoc.dash(vector.dash.length, {space: vector.dash.space || vector.dash.length, phase: vector.dash.phase || 0});
 		} else {
-			pdfDoc.undash();
+			pdfKitDoc.undash();
 		}
-		pdfDoc.fillOpacity(vector.fillOpacity || 1);
-		pdfDoc.strokeOpacity(vector.strokeOpacity || 1);
-		pdfDoc.lineJoin(vector.lineJoin || 'miter');
+		pdfKitDoc.fillOpacity(vector.fillOpacity || 1);
+		pdfKitDoc.strokeOpacity(vector.strokeOpacity || 1);
+		pdfKitDoc.lineJoin(vector.lineJoin || 'miter');
 
 		//TODO: clipping
 
-		switch(vector.type) {
+		switch (vector.type) {
 			case 'ellipse':
-				pdfDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
+				pdfKitDoc.ellipse(vector.x, vector.y, vector.r1, vector.r2);
 				break;
 			case 'rect':
 				if (vector.r) {
-					pdfDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
+					pdfKitDoc.roundedRect(vector.x, vector.y, vector.w, vector.h, vector.r);
 				} else {
-					pdfDoc.rect(vector.x, vector.y, vector.w, vector.h);
+					pdfKitDoc.rect(vector.x, vector.y, vector.w, vector.h);
+				}
+
+				if (vector.linearGradient) {
+					var gradient = pdfKitDoc.linearGradient(vector.x, vector.y, vector.x + vector.w, vector.y);
+					var step = 1 / (vector.linearGradient.length - 1);
+
+					for (var i = 0; i < vector.linearGradient.length; i++) {
+						gradient.stop(i * step, vector.linearGradient[i]);
+					}
+
+					vector.color = gradient;
 				}
 				break;
 			case 'line':
-				pdfDoc.moveTo(vector.x1, vector.y1);
-				pdfDoc.lineTo(vector.x2, vector.y2);
+				pdfKitDoc.moveTo(vector.x1, vector.y1);
+				pdfKitDoc.lineTo(vector.x2, vector.y2);
 				break;
 			case 'polyline':
-				if (vector.points.length === 0) break;
+				if (vector.points.length === 0) {
+					break;
+				}
 
-				pdfDoc.moveTo(vector.points[0].x, vector.points[0].y);
-				for(var i = 1, l = vector.points.length; i < l; i++) {
-					pdfDoc.lineTo(vector.points[i].x, vector.points[i].y);
+				pdfKitDoc.moveTo(vector.points[0].x, vector.points[0].y);
+				for (var i = 1, l = vector.points.length; i < l; i++) {
+					pdfKitDoc.lineTo(vector.points[i].x, vector.points[i].y);
 				}
 
 				if (vector.points.length > 1) {
@@ -525,30 +605,33 @@ return /******/ (function(modules) { // webpackBootstrap
 					var pn = vector.points[vector.points.length - 1];
 
 					if (vector.closePath || p1.x === pn.x && p1.y === pn.y) {
-						pdfDoc.closePath();
+						pdfKitDoc.closePath();
 					}
 				}
 				break;
 		}
 
 		if (vector.color && vector.lineColor) {
-			pdfDoc.fillAndStroke(vector.color, vector.lineColor);
+			pdfKitDoc.fillAndStroke(vector.color, vector.lineColor);
 		} else if (vector.color) {
-			pdfDoc.fill(vector.color);
+			pdfKitDoc.fill(vector.color);
 		} else {
-			pdfDoc.stroke(vector.lineColor || 'black');
+			pdfKitDoc.stroke(vector.lineColor || 'black');
 		}
 	}
 
 	function renderImage(image, x, y, pdfKitDoc) {
-	    pdfKitDoc.image(image.image, image.x, image.y, { width: image._width, height: image._height });
+		pdfKitDoc.image(image.image, image.x, image.y, {width: image._width, height: image._height});
+		if (image.link) {
+			pdfKitDoc.link(image.x, image.y, image._width, image._height, image.link);
+		}
 	}
 
 	module.exports = PdfPrinter;
 
 
 	/* temporary browser extension */
-	PdfPrinter.prototype.fs = __webpack_require__(20);
+	PdfPrinter.prototype.fs = __webpack_require__(10);
 
 
 /***/ },
@@ -565,22 +648,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var _ = __webpack_require__(2);
-	var FontWrapper = __webpack_require__(4);
 
-	function typeName(bold, italics){
+	_.noConflict();
+
+	function typeName(bold, italics) {
 		var type = 'normal';
-		if (bold && italics) type = 'bolditalics';
-		else if (bold) type = 'bold';
-		else if (italics) type = 'italics';
+		if (bold && italics) {
+			type = 'bolditalics';
+		} else if (bold) {
+			type = 'bold';
+		} else if (italics) {
+			type = 'italics';
+		}
 		return type;
 	}
 
-	function FontProvider(fontDescriptors, pdfDoc) {
+	function FontProvider(fontDescriptors, pdfKitDoc) {
 		this.fonts = {};
-		this.pdfDoc = pdfDoc;
-		this.fontWrappers = {};
+		this.pdfKitDoc = pdfKitDoc;
+		this.fontCache = {};
 
-		for(var font in fontDescriptors) {
+		for (var font in fontDescriptors) {
 			if (fontDescriptors.hasOwnProperty(font)) {
 				var fontDef = fontDescriptors[font];
 
@@ -594,31 +682,23 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	}
 
-	FontProvider.prototype.provideFont = function(familyName, bold, italics) {
-	  if (!this.fonts[familyName]) return this.pdfDoc._font;
+	FontProvider.prototype.provideFont = function (familyName, bold, italics) {
 		var type = typeName(bold, italics);
-
-	  this.fontWrappers[familyName] = this.fontWrappers[familyName] || {};
-
-	  if (!this.fontWrappers[familyName][type]) {
-			this.fontWrappers[familyName][type] = new FontWrapper(this.pdfDoc, this.fonts[familyName][type], familyName + '(' + type + ')');
+		if (!this.fonts[familyName] || !this.fonts[familyName][type]) {
+			throw new Error('Font \'' + familyName + '\' in style \'' + type + '\' is not defined in the font section of the document definition.');
 		}
 
-	  return this.fontWrappers[familyName][type];
-	};
+		this.fontCache[familyName] = this.fontCache[familyName] || {};
 
-	FontProvider.prototype.setFontRefsToPdfDoc = function(){
-	  var self = this;
+		if (!this.fontCache[familyName][type]) {
+			var def = this.fonts[familyName][type];
+			if (!Array.isArray(def)) {
+				def = [def];
+			}
+			this.fontCache[familyName][type] = this.pdfKitDoc.font.apply(this.pdfKitDoc, def)._font;
+		}
 
-	  _.each(self.fontWrappers, function(fontFamily) {
-	    _.each(fontFamily, function(fontWrapper){
-	      _.each(fontWrapper.pdfFonts, function(font){
-	        if (!self.pdfDoc.page.fonts[font.id]) {
-	          self.pdfDoc.page.fonts[font.id] = font.ref();
-	        }
-	      });
-	    });
-	  });
+		return this.fontCache[familyName][type];
 	};
 
 	module.exports = FontProvider;
@@ -632,135 +712,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var _ = __webpack_require__(2);
+	var TraversalTracker = __webpack_require__(5);
+	var DocMeasure = __webpack_require__(6);
+	var DocumentContext = __webpack_require__(18);
+	var PageElementWriter = __webpack_require__(19);
+	var ColumnCalculator = __webpack_require__(15);
+	var TableProcessor = __webpack_require__(22);
+	var Line = __webpack_require__(21);
+	var pack = __webpack_require__(16).pack;
+	var offsetVector = __webpack_require__(16).offsetVector;
+	var fontStringify = __webpack_require__(16).fontStringify;
+	var isFunction = __webpack_require__(16).isFunction;
+	var TextTools = __webpack_require__(7);
+	var StyleContextStack = __webpack_require__(14);
 
-	function FontWrapper(pdfkitDoc, path, fontName){
-		this.MAX_CHAR_TYPES = 92;
-
-		this.pdfkitDoc = pdfkitDoc;
-		this.path = path;
-		this.pdfFonts = [];
-		this.charCatalogue = [];
-		this.name = fontName;
-
-	  this.__defineGetter__('ascender', function(){
-	    var font = this.getFont(0);
-	    return font.ascender;
-	  });
-	  this.__defineGetter__('decender', function(){
-	    var font = this.getFont(0);
-	    return font.decender;
-	  });
-
-	}
-	// private
-
-	FontWrapper.prototype.getFont = function(index){
-		if(!this.pdfFonts[index]){
-
-			var pseudoName = this.name + index;
-
-			if(this.postscriptName){
-				delete this.pdfkitDoc._fontFamilies[this.postscriptName];
-			}
-
-			this.pdfFonts[index] = this.pdfkitDoc.font(this.path, pseudoName)._font;
-			if(!this.postscriptName){
-				this.postscriptName = this.pdfFonts[index].name;
-			}
-		}
-
-		return this.pdfFonts[index];
-	};
-
-	// public
-	FontWrapper.prototype.widthOfString = function(){
-		var font = this.getFont(0);
-		return font.widthOfString.apply(font, arguments);
-	};
-
-	FontWrapper.prototype.lineHeight = function(){
-		var font = this.getFont(0);
-		return font.lineHeight.apply(font, arguments);
-	};
-
-	FontWrapper.prototype.ref = function(){
-		var font = this.getFont(0);
-		return font.ref.apply(font, arguments);
-	};
-
-	var toCharCode = function(char){
-	  return char.charCodeAt(0);
-	};
-
-	FontWrapper.prototype.encode = function(text){
-	  var self = this;
-
-	  var charTypesInInline = _.chain(text.split('')).map(toCharCode).uniq().value();
-		if (charTypesInInline.length > self.MAX_CHAR_TYPES) {
-			throw new Error('Inline has more than '+ self.MAX_CHAR_TYPES + ': ' + text + ' different character types and therefore cannot be properly embedded into pdf.');
-		}
-
-
-	  var characterFitInFontWithIndex = function (charCatalogue) {
-	    return _.uniq(charCatalogue.concat(charTypesInInline)).length <= self.MAX_CHAR_TYPES;
-	  };
-
-	  var index = _.findIndex(self.charCatalogue, characterFitInFontWithIndex);
-
-	  if(index < 0){
-	    index = self.charCatalogue.length;
-	    self.charCatalogue[index] = [];
-	  }
-
-		var font = this.getFont(index);
-		font.use(text);
-
-	  _.each(charTypesInInline, function(charCode){
-	    if(!_.includes(self.charCatalogue[index], charCode)){
-	      self.charCatalogue[index].push(charCode);
-	    }
-	  });
-
-	  var encodedText = _.map(font.encode(text), function (char) {
-	    return char.charCodeAt(0).toString(16);
-	  }).join('');
-
-	  return {
-	    encodedText: encodedText,
-	    fontId: font.id
-	  };
-	};
-
-
-	module.exports = FontWrapper;
-
-
-/***/ },
-/* 5 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* jslint node: true */
-	'use strict';
-
-	var _ = __webpack_require__(2);
-	var TraversalTracker = __webpack_require__(6);
-	var DocMeasure = __webpack_require__(7);
-	var DocumentContext = __webpack_require__(13);
-	var PageElementWriter = __webpack_require__(14);
-	var ColumnCalculator = __webpack_require__(10);
-	var TableProcessor = __webpack_require__(17);
-	var Line = __webpack_require__(16);
-	var pack = __webpack_require__(11).pack;
-	var offsetVector = __webpack_require__(11).offsetVector;
-	var fontStringify = __webpack_require__(11).fontStringify;
-	var isFunction = __webpack_require__(11).isFunction;
-	var TextTools = __webpack_require__(8);
-	var StyleContextStack = __webpack_require__(9);
-
-	function addAll(target, otherArray){
-	  _.each(otherArray, function(item){
-	    target.push(item);
-	  });
+	function addAll(target, otherArray) {
+		_.each(otherArray, function (item) {
+			target.push(item);
+		});
 	}
 
 	/**
@@ -774,12 +743,12 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.pageSize = pageSize;
 		this.pageMargins = pageMargins;
 		this.tracker = new TraversalTracker();
-	    this.imageMeasure = imageMeasure;
-	    this.tableLayouts = {};
+		this.imageMeasure = imageMeasure;
+		this.tableLayouts = {};
 	}
 
 	LayoutBuilder.prototype.registerTableLayouts = function (tableLayouts) {
-	  this.tableLayouts = pack(this.tableLayouts, tableLayouts);
+		this.tableLayouts = pack(this.tableLayouts, tableLayouts);
 	};
 
 	/**
@@ -794,285 +763,313 @@ return /******/ (function(modules) { // webpackBootstrap
 	 */
 	LayoutBuilder.prototype.layoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark, pageBreakBeforeFct) {
 
-	  function addPageBreaksIfNecessary(linearNodeList, pages) {
-	    linearNodeList = _.reject(linearNodeList, function(node){
-	      return _.isEmpty(node.positions);
-	    });
+		function addPageBreaksIfNecessary(linearNodeList, pages) {
 
-	    _.each(linearNodeList, function(node) {
-	      var nodeInfo = _.pick(node, [
-	        'id', 'text', 'ul', 'ol', 'table', 'image', 'qr', 'canvas', 'columns',
-	        'headlineLevel', 'style', 'pageBreak', 'pageOrientation',
-	        'width', 'height'
-	      ]);
-	      nodeInfo.startPosition = _.first(node.positions);
-	      nodeInfo.pageNumbers = _.chain(node.positions).map('pageNumber').uniq().value();
-	      nodeInfo.pages = pages.length;
-	      nodeInfo.stack = _.isArray(node.stack);
+			if (!isFunction(pageBreakBeforeFct)) {
+				return false;
+			}
 
-	      node.nodeInfo = nodeInfo;
-	    });
+			linearNodeList = _.reject(linearNodeList, function (node) {
+				return _.isEmpty(node.positions);
+			});
 
-	    return _.any(linearNodeList, function (node, index, followingNodeList) {
-	      if (node.pageBreak !== 'before' && !node.pageBreakCalculated) {
-	        node.pageBreakCalculated = true;
-	        var pageNumber = _.first(node.nodeInfo.pageNumbers);
+			_.each(linearNodeList, function (node) {
+				var nodeInfo = _.pick(node, [
+					'id', 'text', 'ul', 'ol', 'table', 'image', 'qr', 'canvas', 'columns',
+					'headlineLevel', 'style', 'pageBreak', 'pageOrientation',
+					'width', 'height'
+				]);
+				nodeInfo.startPosition = _.first(node.positions);
+				nodeInfo.pageNumbers = _.chain(node.positions).map('pageNumber').uniq().value();
+				nodeInfo.pages = pages.length;
+				nodeInfo.stack = _.isArray(node.stack);
+
+				node.nodeInfo = nodeInfo;
+			});
+
+			return _.some(linearNodeList, function (node, index, followingNodeList) {
+				if (node.pageBreak !== 'before' && !node.pageBreakCalculated) {
+					node.pageBreakCalculated = true;
+					var pageNumber = _.first(node.nodeInfo.pageNumbers);
 
 					var followingNodesOnPage = _.chain(followingNodeList).drop(index + 1).filter(function (node0) {
-	          return _.contains(node0.nodeInfo.pageNumbers, pageNumber);
-	        }).value();
+						return _.includes(node0.nodeInfo.pageNumbers, pageNumber);
+					}).value();
 
-	        var nodesOnNextPage = _.chain(followingNodeList).drop(index + 1).filter(function (node0) {
-	          return _.contains(node0.nodeInfo.pageNumbers, pageNumber + 1);
-	        }).value();
+					var nodesOnNextPage = _.chain(followingNodeList).drop(index + 1).filter(function (node0) {
+						return _.includes(node0.nodeInfo.pageNumbers, pageNumber + 1);
+					}).value();
 
-	        var previousNodesOnPage = _.chain(followingNodeList).take(index).filter(function (node0) {
-	          return _.contains(node0.nodeInfo.pageNumbers, pageNumber);
-	        }).value();
+					var previousNodesOnPage = _.chain(followingNodeList).take(index).filter(function (node0) {
+						return _.includes(node0.nodeInfo.pageNumbers, pageNumber);
+					}).value();
 
-	        if (pageBreakBeforeFct(node.nodeInfo,
-	          _.map(followingNodesOnPage, 'nodeInfo'),
-	          _.map(nodesOnNextPage, 'nodeInfo'),
-	          _.map(previousNodesOnPage, 'nodeInfo'))) {
-	          node.pageBreak = 'before';
-	          return true;
-	        }
-	      }
-	    });
-	  }
+					if (pageBreakBeforeFct(node.nodeInfo,
+						_.map(followingNodesOnPage, 'nodeInfo'),
+						_.map(nodesOnNextPage, 'nodeInfo'),
+						_.map(previousNodesOnPage, 'nodeInfo'))) {
+						node.pageBreak = 'before';
+						return true;
+					}
+				}
+			});
+		}
 
-	  if(!isFunction(pageBreakBeforeFct)){
-	    pageBreakBeforeFct = function(){
-	      return false;
-	    };
-	  }
-
-	  this.docMeasure = new DocMeasure(fontProvider, styleDictionary, defaultStyle, this.imageMeasure, this.tableLayouts, images);
+		this.docMeasure = new DocMeasure(fontProvider, styleDictionary, defaultStyle, this.imageMeasure, this.tableLayouts, images);
 
 
-	  function resetXYs(result) {
-	    _.each(result.linearNodeList, function (node) {
-	      node.resetXY();
-	    });
-	  }
+		function resetXYs(result) {
+			_.each(result.linearNodeList, function (node) {
+				node.resetXY();
+			});
+		}
 
-	  var result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
-	  while(addPageBreaksIfNecessary(result.linearNodeList, result.pages)){
-	    resetXYs(result);
-	    result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
-	  }
+		var result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
+		while (addPageBreaksIfNecessary(result.linearNodeList, result.pages)) {
+			resetXYs(result);
+			result = this.tryLayoutDocument(docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark);
+		}
 
 		return result.pages;
 	};
 
 	LayoutBuilder.prototype.tryLayoutDocument = function (docStructure, fontProvider, styleDictionary, defaultStyle, background, header, footer, images, watermark, pageBreakBeforeFct) {
 
-	  this.linearNodeList = [];
-	  docStructure = this.docMeasure.measureDocument(docStructure);
+		this.linearNodeList = [];
+		docStructure = this.docMeasure.measureDocument(docStructure);
 
-	  this.writer = new PageElementWriter(
-	    new DocumentContext(this.pageSize, this.pageMargins), this.tracker);
+		this.writer = new PageElementWriter(
+			new DocumentContext(this.pageSize, this.pageMargins), this.tracker);
 
-	  var _this = this;
-	  this.writer.context().tracker.startTracking('pageAdded', function() {
-	    _this.addBackground(background);
-	  });
+		var _this = this;
+		this.writer.context().tracker.startTracking('pageAdded', function () {
+			_this.addBackground(background);
+		});
 
-	  this.addBackground(background);
-	  this.processNode(docStructure);
-	  this.addHeadersAndFooters(header, footer);
-	  /* jshint eqnull:true */
-	  if(watermark != null)
-	    this.addWatermark(watermark, fontProvider);
+		this.addBackground(background);
+		this.processNode(docStructure);
+		this.addHeadersAndFooters(header, footer);
+		/* jshint eqnull:true */
+		if (watermark != null) {
+			this.addWatermark(watermark, fontProvider, defaultStyle);
+		}
 
-	  return {pages: this.writer.context().pages, linearNodeList: this.linearNodeList};
+		return {pages: this.writer.context().pages, linearNodeList: this.linearNodeList};
 	};
 
 
-	LayoutBuilder.prototype.addBackground = function(background) {
-	    var backgroundGetter = isFunction(background) ? background : function() { return background; };
+	LayoutBuilder.prototype.addBackground = function (background) {
+		var backgroundGetter = isFunction(background) ? background : function () {
+			return background;
+		};
 
-	    var pageBackground = backgroundGetter(this.writer.context().page + 1);
+		var pageBackground = backgroundGetter(this.writer.context().page + 1);
 
-	    if (pageBackground) {
-	      var pageSize = this.writer.context().getCurrentPage().pageSize;
-	      this.writer.beginUnbreakableBlock(pageSize.width, pageSize.height);
-	      this.processNode(this.docMeasure.measureDocument(pageBackground));
-	      this.writer.commitUnbreakableBlock(0, 0);
-	    }
+		if (pageBackground) {
+			var pageSize = this.writer.context().getCurrentPage().pageSize;
+			this.writer.beginUnbreakableBlock(pageSize.width, pageSize.height);
+			this.processNode(this.docMeasure.measureDocument(pageBackground));
+			this.writer.commitUnbreakableBlock(0, 0);
+		}
 	};
 
-	LayoutBuilder.prototype.addStaticRepeatable = function(headerOrFooter, sizeFunction) {
-	  this.addDynamicRepeatable(function() { return headerOrFooter; }, sizeFunction);
+	LayoutBuilder.prototype.addStaticRepeatable = function (headerOrFooter, sizeFunction) {
+		this.addDynamicRepeatable(function () {
+			return headerOrFooter;
+		}, sizeFunction);
 	};
 
-	LayoutBuilder.prototype.addDynamicRepeatable = function(nodeGetter, sizeFunction) {
-	  var pages = this.writer.context().pages;
+	LayoutBuilder.prototype.addDynamicRepeatable = function (nodeGetter, sizeFunction) {
+		var pages = this.writer.context().pages;
 
-	  for(var pageIndex = 0, l = pages.length; pageIndex < l; pageIndex++) {
-	    this.writer.context().page = pageIndex;
+		for (var pageIndex = 0, l = pages.length; pageIndex < l; pageIndex++) {
+			this.writer.context().page = pageIndex;
 
-	    var node = nodeGetter(pageIndex + 1, l);
+			var node = nodeGetter(pageIndex + 1, l, this.writer.context().pages[pageIndex].pageSize);
 
-	    if (node) {
-	      var sizes = sizeFunction(this.writer.context().getCurrentPage().pageSize, this.pageMargins);
-	      this.writer.beginUnbreakableBlock(sizes.width, sizes.height);
-	      this.processNode(this.docMeasure.measureDocument(node));
-	      this.writer.commitUnbreakableBlock(sizes.x, sizes.y);
-	    }
-	  }
+			if (node) {
+				var sizes = sizeFunction(this.writer.context().getCurrentPage().pageSize, this.pageMargins);
+				this.writer.beginUnbreakableBlock(sizes.width, sizes.height);
+				this.processNode(this.docMeasure.measureDocument(node));
+				this.writer.commitUnbreakableBlock(sizes.x, sizes.y);
+			}
+		}
 	};
 
-	LayoutBuilder.prototype.addHeadersAndFooters = function(header, footer) {
-	  var headerSizeFct = function(pageSize, pageMargins){
-	    return {
-	      x: 0,
-	      y: 0,
-	      width: pageSize.width,
-	      height: pageMargins.top
-	    };
-	  };
+	LayoutBuilder.prototype.addHeadersAndFooters = function (header, footer) {
+		var headerSizeFct = function (pageSize, pageMargins) {
+			return {
+				x: 0,
+				y: 0,
+				width: pageSize.width,
+				height: pageMargins.top
+			};
+		};
 
-	  var footerSizeFct = function (pageSize, pageMargins) {
-	    return {
-	      x: 0,
-	      y: pageSize.height - pageMargins.bottom,
-	      width: pageSize.width,
-	      height: pageMargins.bottom
-	    };
-	  };
+		var footerSizeFct = function (pageSize, pageMargins) {
+			return {
+				x: 0,
+				y: pageSize.height - pageMargins.bottom,
+				width: pageSize.width,
+				height: pageMargins.bottom
+			};
+		};
 
-	  if(isFunction(header)) {
-	    this.addDynamicRepeatable(header, headerSizeFct);
-	  } else if(header) {
-	    this.addStaticRepeatable(header, headerSizeFct);
-	  }
+		if (isFunction(header)) {
+			this.addDynamicRepeatable(header, headerSizeFct);
+		} else if (header) {
+			this.addStaticRepeatable(header, headerSizeFct);
+		}
 
-	  if(isFunction(footer)) {
-	    this.addDynamicRepeatable(footer, footerSizeFct);
-	  } else if(footer) {
-	    this.addStaticRepeatable(footer, footerSizeFct);
-	  }
+		if (isFunction(footer)) {
+			this.addDynamicRepeatable(footer, footerSizeFct);
+		} else if (footer) {
+			this.addStaticRepeatable(footer, footerSizeFct);
+		}
 	};
 
-	LayoutBuilder.prototype.addWatermark = function(watermark, fontProvider){
-	  var defaultFont = Object.getOwnPropertyNames(fontProvider.fonts)[0]; // TODO allow selection of other font
-	  var watermarkObject = {
-	    text: watermark,
-	    font: fontProvider.provideFont(fontProvider[defaultFont], false, false),
-	    size: getSize(this.pageSize, watermark, fontProvider)
-	  };
+	LayoutBuilder.prototype.addWatermark = function (watermark, fontProvider, defaultStyle) {
+		if (typeof watermark === 'string') {
+			watermark = {'text': watermark};
+		}
 
-	  var pages = this.writer.context().pages;
-	  for(var i = 0, l = pages.length; i < l; i++) {
-	    pages[i].watermark = watermarkObject;
-	  }
+		if (!watermark.text) { // empty watermark text
+			return;
+		}
 
-	  function getSize(pageSize, watermark, fontProvider){
-	    var width = pageSize.width;
-	    var height = pageSize.height;
-	    var targetWidth = Math.sqrt(width*width + height*height)*0.8; /* page diagnoal * sample factor */
-	    var textTools = new TextTools(fontProvider);
-	    var styleContextStack = new StyleContextStack();
-	    var size;
+		watermark.font = watermark.font || defaultStyle.font || 'Roboto';
+		watermark.color = watermark.color || 'black';
+		watermark.opacity = watermark.opacity || 0.6;
+		watermark.bold = watermark.bold || false;
+		watermark.italics = watermark.italics || false;
 
-	    /**
-	     * Binary search the best font size.
-	     * Initial bounds [0, 1000]
-	     * Break when range < 1
-	     */
-	    var a = 0;
-	    var b = 1000;
-	    var c = (a+b)/2;
-	    while(Math.abs(a - b) > 1){
-	      styleContextStack.push({
-	        fontSize: c
-	      });
-	      size = textTools.sizeOfString(watermark, styleContextStack);
-	      if(size.width > targetWidth){
-	        b = c;
-	        c = (a+b)/2;
-	      }
-	      else if(size.width < targetWidth){
-	        a = c;
-	        c = (a+b)/2;
-	      }
-	      styleContextStack.pop();
-	    }
-	    /*
-	      End binary search
-	     */
-	    return {size: size, fontSize: c};
-	  }
+		var watermarkObject = {
+			text: watermark.text,
+			font: fontProvider.provideFont(watermark.font, watermark.bold, watermark.italics),
+			size: getSize(this.pageSize, watermark, fontProvider),
+			color: watermark.color,
+			opacity: watermark.opacity
+		};
+
+		var pages = this.writer.context().pages;
+		for (var i = 0, l = pages.length; i < l; i++) {
+			pages[i].watermark = watermarkObject;
+		}
+
+		function getSize(pageSize, watermark, fontProvider) {
+			var width = pageSize.width;
+			var height = pageSize.height;
+			var targetWidth = Math.sqrt(width * width + height * height) * 0.8; /* page diagonal * sample factor */
+			var textTools = new TextTools(fontProvider);
+			var styleContextStack = new StyleContextStack(null, {font: watermark.font, bold: watermark.bold, italics: watermark.italics});
+			var size;
+
+			/**
+			 * Binary search the best font size.
+			 * Initial bounds [0, 1000]
+			 * Break when range < 1
+			 */
+			var a = 0;
+			var b = 1000;
+			var c = (a + b) / 2;
+			while (Math.abs(a - b) > 1) {
+				styleContextStack.push({
+					fontSize: c
+				});
+				size = textTools.sizeOfString(watermark.text, styleContextStack);
+				if (size.width > targetWidth) {
+					b = c;
+					c = (a + b) / 2;
+				} else if (size.width < targetWidth) {
+					a = c;
+					c = (a + b) / 2;
+				}
+				styleContextStack.pop();
+			}
+			/*
+			 End binary search
+			 */
+			return {size: size, fontSize: c};
+		}
 	};
 
-	function decorateNode(node){
-	  var x = node.x, y = node.y;
-	  node.positions = [];
+	function decorateNode(node) {
+		var x = node.x, y = node.y;
+		node.positions = [];
 
-	  _.each(node.canvas, function(vector){
-	    var x = vector.x, y = vector.y;
-	    vector.resetXY = function(){
-	      vector.x = x;
-	      vector.y = y;
-	    };
-	  });
+		_.each(node.canvas, function (vector) {
+			var x = vector.x, y = vector.y, x1 = vector.x1, y1 = vector.y1, x2 = vector.x2, y2 = vector.y2;
+			vector.resetXY = function () {
+				vector.x = x;
+				vector.y = y;
+				vector.x1 = x1;
+				vector.y1 = y1;
+				vector.x2 = x2;
+				vector.y2 = y2;
+			};
+		});
 
-	  node.resetXY = function(){
-	    node.x = x;
-	    node.y = y;
-	    _.each(node.canvas, function(vector){
-	      vector.resetXY();
-	    });
-	  };
+		node.resetXY = function () {
+			node.x = x;
+			node.y = y;
+			_.each(node.canvas, function (vector) {
+				vector.resetXY();
+			});
+		};
 	}
 
-	LayoutBuilder.prototype.processNode = function(node) {
-	  var self = this;
+	LayoutBuilder.prototype.processNode = function (node) {
+		var self = this;
 
-	  this.linearNodeList.push(node);
-	  decorateNode(node);
+		this.linearNodeList.push(node);
+		decorateNode(node);
 
-	  applyMargins(function() {
-	    var absPosition = node.absolutePosition;
-	    if(absPosition){
-	      self.writer.context().beginDetachedBlock();
-	      self.writer.context().moveTo(absPosition.x || 0, absPosition.y || 0);
-	    }
-
-	    if (node.stack) {
-	      self.processVerticalContainer(node);
-	    } else if (node.columns) {
-	      self.processColumns(node);
-	    } else if (node.ul) {
-	      self.processList(false, node);
-	    } else if (node.ol) {
-	      self.processList(true, node);
-	    } else if (node.table) {
-	      self.processTable(node);
-	    } else if (node.text !== undefined) {
-	      self.processLeaf(node);
-	    } else if (node.image) {
-	      self.processImage(node);
-	    } else if (node.canvas) {
-	      self.processCanvas(node);
-	    } else if (node.qr) {
-	      self.processQr(node);
-	    }else if (!node._span) {
-			throw 'Unrecognized document structure: ' + JSON.stringify(node, fontStringify);
+		applyMargins(function () {
+			var absPosition = node.absolutePosition;
+			if (absPosition) {
+				self.writer.context().beginDetachedBlock();
+				self.writer.context().moveTo(absPosition.x || 0, absPosition.y || 0);
 			}
 
-	    if(absPosition){
-	      self.writer.context().endDetachedBlock();
-	    }
+			var relPosition = node.relativePosition;
+			if (relPosition) {
+				self.writer.context().beginDetachedBlock();
+				self.writer.context().moveTo((relPosition.x || 0) + self.writer.context().x, (relPosition.y || 0) + self.writer.context().y);
+			}
+
+			if (node.stack) {
+				self.processVerticalContainer(node);
+			} else if (node.columns) {
+				self.processColumns(node);
+			} else if (node.ul) {
+				self.processList(false, node);
+			} else if (node.ol) {
+				self.processList(true, node);
+			} else if (node.table) {
+				self.processTable(node);
+			} else if (node.text !== undefined) {
+				self.processLeaf(node);
+			} else if (node.image) {
+				self.processImage(node);
+			} else if (node.canvas) {
+				self.processCanvas(node);
+			} else if (node.qr) {
+				self.processQr(node);
+			} else if (!node._span) {
+				throw 'Unrecognized document structure: ' + JSON.stringify(node, fontStringify);
+			}
+
+			if (absPosition || relPosition) {
+				self.writer.context().endDetachedBlock();
+			}
 		});
 
 		function applyMargins(callback) {
 			var margin = node._margin;
 
-	    if (node.pageBreak === 'before') {
-	        self.writer.moveToNextPage(node.pageOrientation);
-	    }
+			if (node.pageBreak === 'before') {
+				self.writer.moveToNextPage(node.pageOrientation);
+			}
 
 			if (margin) {
 				self.writer.context().moveDown(margin[1]);
@@ -1081,21 +1078,21 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			callback();
 
-			if(margin) {
+			if (margin) {
 				self.writer.context().addMargin(-margin[0], -margin[2]);
 				self.writer.context().moveDown(margin[3]);
 			}
 
-	    if (node.pageBreak === 'after') {
-	        self.writer.moveToNextPage(node.pageOrientation);
-	    }
+			if (node.pageBreak === 'after') {
+				self.writer.moveToNextPage(node.pageOrientation);
+			}
 		}
 	};
 
 	// vertical container
-	LayoutBuilder.prototype.processVerticalContainer = function(node) {
+	LayoutBuilder.prototype.processVerticalContainer = function (node) {
 		var self = this;
-		node.stack.forEach(function(item) {
+		node.stack.forEach(function (item) {
 			self.processNode(item);
 			addAll(node.positions, item.positions);
 
@@ -1104,25 +1101,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	// columns
-	LayoutBuilder.prototype.processColumns = function(columnNode) {
+	LayoutBuilder.prototype.processColumns = function (columnNode) {
 		var columns = columnNode.columns;
 		var availableWidth = this.writer.context().availableWidth;
 		var gaps = gapArray(columnNode._gap);
 
-		if (gaps) availableWidth -= (gaps.length - 1) * columnNode._gap;
+		if (gaps) {
+			availableWidth -= (gaps.length - 1) * columnNode._gap;
+		}
 
 		ColumnCalculator.buildColumnWidths(columns, availableWidth);
 		var result = this.processRow(columns, columns, gaps);
-	    addAll(columnNode.positions, result.positions);
+		addAll(columnNode.positions, result.positions);
 
 
 		function gapArray(gap) {
-			if (!gap) return null;
+			if (!gap) {
+				return null;
+			}
 
 			var gaps = [];
 			gaps.push(0);
 
-			for(var i = columns.length - 1; i > 0; i--) {
+			for (var i = columns.length - 1; i > 0; i--) {
 				gaps.push(gap);
 			}
 
@@ -1130,90 +1131,94 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	LayoutBuilder.prototype.processRow = function(columns, widths, gaps, tableBody, tableRow) {
-	  var self = this;
-	  var pageBreaks = [], positions = [];
+	LayoutBuilder.prototype.processRow = function (columns, widths, gaps, tableBody, tableRow) {
+		var self = this;
+		var pageBreaks = [], positions = [];
 
-	  this.tracker.auto('pageChanged', storePageBreakData, function() {
-	    widths = widths || columns;
+		this.tracker.auto('pageChanged', storePageBreakData, function () {
+			widths = widths || columns;
 
-	    self.writer.context().beginColumnGroup();
+			self.writer.context().beginColumnGroup();
 
-	    for(var i = 0, l = columns.length; i < l; i++) {
-	      var column = columns[i];
-	      var width = widths[i]._calcWidth;
-	      var leftOffset = colLeftOffset(i);
+			for (var i = 0, l = columns.length; i < l; i++) {
+				var column = columns[i];
+				var width = widths[i]._calcWidth;
+				var leftOffset = colLeftOffset(i);
 
-	      if (column.colSpan && column.colSpan > 1) {
-	          for(var j = 1; j < column.colSpan; j++) {
-	              width += widths[++i]._calcWidth + gaps[i];
-	          }
-	      }
+				if (column.colSpan && column.colSpan > 1) {
+					for (var j = 1; j < column.colSpan; j++) {
+						width += widths[++i]._calcWidth + gaps[i];
+					}
+				}
 
-	      self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
-	      if (!column._span) {
-	        self.processNode(column);
-	        addAll(positions, column.positions);
-	      } else if (column._columnEndingContext) {
-	        // row-span ending
-	        self.writer.context().markEnding(column);
-	      }
-	    }
+				self.writer.context().beginColumn(width, leftOffset, getEndingCell(column, i));
+				if (!column._span) {
+					self.processNode(column);
+					addAll(positions, column.positions);
+				} else if (column._columnEndingContext) {
+					// row-span ending
+					self.writer.context().markEnding(column);
+				}
+			}
 
-	    self.writer.context().completeColumnGroup();
-	  });
+			self.writer.context().completeColumnGroup();
+		});
 
-	  return {pageBreaks: pageBreaks, positions: positions};
+		return {pageBreaks: pageBreaks, positions: positions};
 
-	  function storePageBreakData(data) {
-	    var pageDesc;
+		function storePageBreakData(data) {
+			var pageDesc;
 
-	    for(var i = 0, l = pageBreaks.length; i < l; i++) {
-	      var desc = pageBreaks[i];
-	      if (desc.prevPage === data.prevPage) {
-	        pageDesc = desc;
-	        break;
-	      }
-	    }
+			for (var i = 0, l = pageBreaks.length; i < l; i++) {
+				var desc = pageBreaks[i];
+				if (desc.prevPage === data.prevPage) {
+					pageDesc = desc;
+					break;
+				}
+			}
 
-	    if (!pageDesc) {
-	      pageDesc = data;
-	      pageBreaks.push(pageDesc);
-	    }
-	    pageDesc.prevY = Math.max(pageDesc.prevY, data.prevY);
-	    pageDesc.y = Math.min(pageDesc.y, data.y);
-	  }
+			if (!pageDesc) {
+				pageDesc = data;
+				pageBreaks.push(pageDesc);
+			}
+			pageDesc.prevY = Math.max(pageDesc.prevY, data.prevY);
+			pageDesc.y = Math.min(pageDesc.y, data.y);
+		}
 
 		function colLeftOffset(i) {
-			if (gaps && gaps.length > i) return gaps[i];
+			if (gaps && gaps.length > i) {
+				return gaps[i];
+			}
 			return 0;
 		}
 
-	  function getEndingCell(column, columnIndex) {
-	    if (column.rowSpan && column.rowSpan > 1) {
-	      var endingRow = tableRow + column.rowSpan - 1;
-	      if (endingRow >= tableBody.length) throw 'Row span for column ' + columnIndex + ' (with indexes starting from 0) exceeded row count';
-	      return tableBody[endingRow][columnIndex];
-	    }
+		function getEndingCell(column, columnIndex) {
+			if (column.rowSpan && column.rowSpan > 1) {
+				var endingRow = tableRow + column.rowSpan - 1;
+				if (endingRow >= tableBody.length) {
+					throw 'Row span for column ' + columnIndex + ' (with indexes starting from 0) exceeded row count';
+				}
+				return tableBody[endingRow][columnIndex];
+			}
 
-	    return null;
-	  }
+			return null;
+		}
 	};
 
 	// lists
-	LayoutBuilder.prototype.processList = function(orderedList, node) {
+	LayoutBuilder.prototype.processList = function (orderedList, node) {
 		var self = this,
-	      items = orderedList ? node.ol : node.ul,
-	      gapSize = node._gapSize;
+			items = orderedList ? node.ol : node.ul,
+			gapSize = node._gapSize;
 
 		this.writer.context().addMargin(gapSize.width);
 
 		var nextMarker;
-		this.tracker.auto('lineAdded', addMarkerToFirstLeaf, function() {
-			items.forEach(function(item) {
+		this.tracker.auto('lineAdded', addMarkerToFirstLeaf, function () {
+			items.forEach(function (item) {
 				nextMarker = item.listMarker;
 				self.processNode(item);
-	            addAll(node.positions, item.positions);
+				addAll(node.positions, item.positions);
 			});
 		});
 
@@ -1231,7 +1236,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 					offsetVector(vector, -marker._minWidth, 0);
 					self.writer.addVector(vector);
-				} else {
+				} else if (marker._inlines) {
 					var markerLine = new Line(self.pageSize.width);
 					markerLine.addInline(marker._inlines[0]);
 					markerLine.x = -marker._minWidth;
@@ -1243,54 +1248,62 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	// tables
-	LayoutBuilder.prototype.processTable = function(tableNode) {
-	  var processor = new TableProcessor(tableNode);
+	LayoutBuilder.prototype.processTable = function (tableNode) {
+		var processor = new TableProcessor(tableNode);
 
-	  processor.beginTable(this.writer);
+		processor.beginTable(this.writer);
 
-	  for(var i = 0, l = tableNode.table.body.length; i < l; i++) {
-	    processor.beginRow(i, this.writer);
+		for (var i = 0, l = tableNode.table.body.length; i < l; i++) {
+			processor.beginRow(i, this.writer);
 
-	    var result = this.processRow(tableNode.table.body[i], tableNode.table.widths, tableNode._offsets.offsets, tableNode.table.body, i);
-	    addAll(tableNode.positions, result.positions);
+			var result = this.processRow(tableNode.table.body[i], tableNode.table.widths, tableNode._offsets.offsets, tableNode.table.body, i);
+			addAll(tableNode.positions, result.positions);
 
-	    processor.endRow(i, this.writer, result.pageBreaks);
-	  }
+			processor.endRow(i, this.writer, result.pageBreaks);
+		}
 
-	  processor.endTable(this.writer);
+		processor.endTable(this.writer);
 	};
 
 	// leafs (texts)
-	LayoutBuilder.prototype.processLeaf = function(node) {
+	LayoutBuilder.prototype.processLeaf = function (node) {
 		var line = this.buildNextLine(node);
+		var currentHeight = (line) ? line.getHeight() : 0;
+		var maxHeight = node.maxHeight || -1;
 
-		while (line) {
+		while (line && (maxHeight === -1 || currentHeight < maxHeight)) {
 			var positions = this.writer.addLine(line);
-	    node.positions.push(positions);
+			node.positions.push(positions);
 			line = this.buildNextLine(node);
+			if (line) {
+				currentHeight += line.getHeight();
+			}
 		}
 	};
 
-	LayoutBuilder.prototype.buildNextLine = function(textNode) {
-		if (!textNode._inlines || textNode._inlines.length === 0) return null;
+	LayoutBuilder.prototype.buildNextLine = function (textNode) {
+		if (!textNode._inlines || textNode._inlines.length === 0) {
+			return null;
+		}
 
 		var line = new Line(this.writer.context().availableWidth);
 
-		while(textNode._inlines && textNode._inlines.length > 0 && line.hasEnoughSpaceForInline(textNode._inlines[0])) {
+		while (textNode._inlines && textNode._inlines.length > 0 && line.hasEnoughSpaceForInline(textNode._inlines[0])) {
 			line.addInline(textNode._inlines.shift());
 		}
 
 		line.lastLineInParagraph = textNode._inlines.length === 0;
+
 		return line;
 	};
 
 	// images
-	LayoutBuilder.prototype.processImage = function(node) {
-	    var position = this.writer.addImage(node);
-	    node.positions.push(position);
+	LayoutBuilder.prototype.processImage = function (node) {
+		var position = this.writer.addImage(node);
+		node.positions.push(position);
 	};
 
-	LayoutBuilder.prototype.processCanvas = function(node) {
+	LayoutBuilder.prototype.processCanvas = function (node) {
 		var height = node._minHeight;
 
 		if (this.writer.context().availableHeight < height) {
@@ -1300,39 +1313,39 @@ return /******/ (function(modules) { // webpackBootstrap
 			this.writer.moveToNextPage();
 		}
 
-		node.canvas.forEach(function(vector) {
+		node.canvas.forEach(function (vector) {
 			var position = this.writer.addVector(vector);
-	        node.positions.push(position);
+			node.positions.push(position);
 		}, this);
 
 		this.writer.context().moveDown(height);
 	};
 
-	LayoutBuilder.prototype.processQr = function(node) {
+	LayoutBuilder.prototype.processQr = function (node) {
 		var position = this.writer.addQr(node);
-	    node.positions.push(position);
+		node.positions.push(position);
 	};
 
 	module.exports = LayoutBuilder;
 
 
 /***/ },
-/* 6 */
+/* 5 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
 	'use strict';
 
 	/**
-	* Creates an instance of TraversalTracker
-	*
-	* @constructor
-	*/
+	 * Creates an instance of TraversalTracker
+	 *
+	 * @constructor
+	 */
 	function TraversalTracker() {
 		this.events = {};
 	}
 
-	TraversalTracker.prototype.startTracking = function(event, cb) {
+	TraversalTracker.prototype.startTracking = function (event, cb) {
 		var callbacks = (this.events[event] || (this.events[event] = []));
 
 		if (callbacks.indexOf(cb) < 0) {
@@ -1340,7 +1353,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	TraversalTracker.prototype.stopTracking = function(event, cb) {
+	TraversalTracker.prototype.stopTracking = function (event, cb) {
 		var callbacks = this.events[event];
 
 		if (callbacks) {
@@ -1351,19 +1364,19 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	TraversalTracker.prototype.emit = function(event) {
+	TraversalTracker.prototype.emit = function (event) {
 		var args = Array.prototype.slice.call(arguments, 1);
 
 		var callbacks = this.events[event];
 
 		if (callbacks) {
-			callbacks.forEach(function(cb) {
+			callbacks.forEach(function (cb) {
 				cb.apply(this, args);
 			});
 		}
 	};
 
-	TraversalTracker.prototype.auto = function(event, cb, innerBlock) {
+	TraversalTracker.prototype.auto = function (event, cb, innerBlock) {
 		this.startTracking(event, cb);
 		innerBlock();
 		this.stopTracking(event, cb);
@@ -1373,22 +1386,22 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 7 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var TextTools = __webpack_require__(8);
-	var StyleContextStack = __webpack_require__(9);
-	var ColumnCalculator = __webpack_require__(10);
-	var fontStringify = __webpack_require__(11).fontStringify;
-	var pack = __webpack_require__(11).pack;
-	var qrEncoder = __webpack_require__(12);
+	var TextTools = __webpack_require__(7);
+	var StyleContextStack = __webpack_require__(14);
+	var ColumnCalculator = __webpack_require__(15);
+	var fontStringify = __webpack_require__(16).fontStringify;
+	var pack = __webpack_require__(16).pack;
+	var qrEncoder = __webpack_require__(17);
 
 	/**
-	* @private
-	*/
+	 * @private
+	 */
 	function DocMeasure(fontProvider, styleDictionary, defaultStyle, imageMeasure, tableLayouts, images) {
 		this.textTools = new TextTools(fontProvider);
 		this.styleStack = new StyleContextStack(styleDictionary, defaultStyle);
@@ -1399,26 +1412,36 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	/**
-	* Measures all nodes and sets min/max-width properties required for the second
-	* layout-pass.
-	* @param  {Object} docStructure document-definition-object
-	* @return {Object}              document-measurement-object
-	*/
-	DocMeasure.prototype.measureDocument = function(docStructure) {
+	 * Measures all nodes and sets min/max-width properties required for the second
+	 * layout-pass.
+	 * @param  {Object} docStructure document-definition-object
+	 * @return {Object}              document-measurement-object
+	 */
+	DocMeasure.prototype.measureDocument = function (docStructure) {
 		return this.measureNode(docStructure);
 	};
 
-	DocMeasure.prototype.measureNode = function(node) {
+	DocMeasure.prototype.measureNode = function (node) {
 		// expand shortcuts
-		if (node instanceof Array) {
-			node = { stack: node };
-		} else if (typeof node == 'string' || node instanceof String) {
-			node = { text: node };
+		if (Array.isArray(node)) {
+			node = {stack: node};
+		} else if (typeof node === 'string' || node instanceof String) {
+			node = {text: node};
+		} else if (typeof node === 'number' || typeof node === 'boolean') {
+			node = {text: node.toString()};
+		} else if (node === null) {
+			node = {text: ''};
+		}
+
+		// Deal with empty nodes to prevent crash in getNodeMargin
+		if (Object.keys(node).length === 0) {
+			// A warning could be logged: console.warn('pdfmake: Empty node, ignoring it');
+			node = {text: ''};
 		}
 
 		var self = this;
 
-		return this.styleStack.auto(node, function() {
+		return this.styleStack.auto(node, function () {
 			// TODO: refactor + rethink whether this is the proper way to handle margins
 			node._margin = getNodeMargin(node);
 
@@ -1427,9 +1450,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			} else if (node.stack) {
 				return extendMargins(self.measureVerticalContainer(node));
 			} else if (node.ul) {
-				return extendMargins(self.measureList(false, node));
+				return extendMargins(self.measureUnorderedList(node));
 			} else if (node.ol) {
-				return extendMargins(self.measureList(true, node));
+				return extendMargins(self.measureOrderedList(node));
 			} else if (node.table) {
 				return extendMargins(self.measureTable(node));
 			} else if (node.text !== undefined) {
@@ -1458,25 +1481,25 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		function getNodeMargin() {
 
-			function processSingleMargins(node, currentMargin){
+			function processSingleMargins(node, currentMargin) {
 				if (node.marginLeft || node.marginTop || node.marginRight || node.marginBottom) {
 					return [
 						node.marginLeft || currentMargin[0] || 0,
 						node.marginTop || currentMargin[1] || 0,
-						node.marginRight || currentMargin[2]  || 0,
-						node.marginBottom || currentMargin[3]  || 0
+						node.marginRight || currentMargin[2] || 0,
+						node.marginBottom || currentMargin[3] || 0
 					];
 				}
 				return currentMargin;
 			}
 
-			function flattenStyleArray(styleArray){
+			function flattenStyleArray(styleArray) {
 				var flattenedStyles = {};
 				for (var i = styleArray.length - 1; i >= 0; i--) {
 					var styleName = styleArray[i];
 					var style = self.styleStack.styleDictionary[styleName];
-					for(var key in style){
-						if(style.hasOwnProperty(key)){
+					for (var key in style) {
+						if (style.hasOwnProperty(key)) {
 							flattenedStyles[key] = style[key];
 						}
 					}
@@ -1486,10 +1509,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			function convertMargin(margin) {
 				if (typeof margin === 'number' || margin instanceof Number) {
-					margin = [ margin, margin, margin, margin ];
-				} else if (margin instanceof Array) {
+					margin = [margin, margin, margin, margin];
+				} else if (Array.isArray(margin)) {
 					if (margin.length === 2) {
-						margin = [ margin[0], margin[1], margin[0], margin[1] ];
+						margin = [margin[0], margin[1], margin[0], margin[1]];
 					}
 				}
 				return margin;
@@ -1497,26 +1520,26 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			var margin = [undefined, undefined, undefined, undefined];
 
-			if(node.style) {
-				var styleArray = (node.style instanceof Array) ? node.style : [node.style];
+			if (node.style) {
+				var styleArray = (Array.isArray(node.style)) ? node.style : [node.style];
 				var flattenedStyleArray = flattenStyleArray(styleArray);
 
-				if(flattenedStyleArray) {
+				if (flattenedStyleArray) {
 					margin = processSingleMargins(flattenedStyleArray, margin);
 				}
 
-				if(flattenedStyleArray.margin){
+				if (flattenedStyleArray.margin) {
 					margin = convertMargin(flattenedStyleArray.margin);
 				}
 			}
-			
+
 			margin = processSingleMargins(node, margin);
 
-			if(node.margin){
+			if (node.margin) {
 				margin = convertMargin(node.margin);
 			}
 
-			if(margin[0] === undefined && margin[1] === undefined && margin[2] === undefined && margin[3] === undefined) {
+			if (margin[0] === undefined && margin[1] === undefined && margin[2] === undefined && margin[3] === undefined) {
 				return null;
 			} else {
 				return margin;
@@ -1524,15 +1547,15 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	DocMeasure.prototype.convertIfBase64Image = function(node) {
+	DocMeasure.prototype.convertIfBase64Image = function (node) {
 		if (/^data:image\/(jpeg|jpg|png);base64,/.test(node.image)) {
 			var label = '$$pdfmake$$' + this.autoImageIndex++;
 			this.images[label] = node.image;
 			node.image = label;
-	}
+		}
 	};
 
-	DocMeasure.prototype.measureImage = function(node) {
+	DocMeasure.prototype.measureImage = function (node) {
 		if (this.images) {
 			this.convertIfBase64Image(node);
 		}
@@ -1552,8 +1575,14 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.measureLeaf = function(node) {
-		var data = this.textTools.buildInlines(node.text, this.styleStack);
+	DocMeasure.prototype.measureLeaf = function (node) {
+
+		// Make sure style properties of the node itself are considered when building inlines.
+		// We could also just pass [node] to buildInlines, but that fails for bullet points.
+		var styleStack = this.styleStack.clone();
+		styleStack.push(node);
+
+		var data = this.textTools.buildInlines(node.text, styleStack);
 
 		node._inlines = data.items;
 		node._minWidth = data.minWidth;
@@ -1562,13 +1591,13 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.measureVerticalContainer = function(node) {
+	DocMeasure.prototype.measureVerticalContainer = function (node) {
 		var items = node.stack;
 
 		node._minWidth = 0;
 		node._maxWidth = 0;
 
-		for(var i = 0, l = items.length; i < l; i++) {
+		for (var i = 0, l = items.length; i < l; i++) {
 			items[i] = this.measureNode(items[i]);
 
 			node._minWidth = Math.max(node._minWidth, items[i]._minWidth);
@@ -1578,34 +1607,76 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.gapSizeForList = function(isOrderedList, listItems) {
-		if (isOrderedList) {
-			var longestNo = (listItems.length).toString().replace(/./g, '9');
-			return this.textTools.sizeOfString(longestNo + '. ', this.styleStack);
-		} else {
-			return this.textTools.sizeOfString('9. ', this.styleStack);
-		}
+	DocMeasure.prototype.gapSizeForList = function () {
+		return this.textTools.sizeOfString('9. ', this.styleStack);
 	};
 
-	DocMeasure.prototype.buildMarker = function(isOrderedList, counter, styleStack, gapSize) {
-		var marker;
-
-		if (isOrderedList) {
-			marker = { _inlines: this.textTools.buildInlines(counter, styleStack).items };
-		}
-		else {
+	DocMeasure.prototype.buildUnorderedMarker = function (styleStack, gapSize, type) {
+		function buildDisc(gapSize, color) {
 			// TODO: ascender-based calculations
 			var radius = gapSize.fontSize / 6;
-			marker = {
-				canvas: [ {
-					x: radius,
-					y: (gapSize.height / gapSize.lineHeight) + gapSize.decender - gapSize.fontSize / 3,//0,// gapSize.fontSize * 2 / 3,
-					r1: radius,
-					r2: radius,
-					type: 'ellipse',
-					color: 'black'
-				} ]
+			return {
+				canvas: [{
+						x: radius,
+						y: (gapSize.height / gapSize.lineHeight) + gapSize.descender - gapSize.fontSize / 3,
+						r1: radius,
+						r2: radius,
+						type: 'ellipse',
+						color: color
+					}]
 			};
+		}
+
+		function buildSquare(gapSize, color) {
+			// TODO: ascender-based calculations
+			var size = gapSize.fontSize / 3;
+			return {
+				canvas: [{
+						x: 0,
+						y: (gapSize.height / gapSize.lineHeight) + gapSize.descender - (gapSize.fontSize / 3) - (size / 2),
+						h: size,
+						w: size,
+						type: 'rect',
+						color: color
+					}]
+			};
+		}
+
+		function buildCircle(gapSize, color) {
+			// TODO: ascender-based calculations
+			var radius = gapSize.fontSize / 6;
+			return {
+				canvas: [{
+						x: radius,
+						y: (gapSize.height / gapSize.lineHeight) + gapSize.descender - gapSize.fontSize / 3,
+						r1: radius,
+						r2: radius,
+						type: 'ellipse',
+						lineColor: color
+					}]
+			};
+		}
+
+		var marker;
+		var color = styleStack.getProperty('markerColor') || styleStack.getProperty('color') || 'black';
+
+		switch (type) {
+			case 'circle':
+				marker = buildCircle(gapSize, color);
+				break;
+
+			case 'square':
+				marker = buildSquare(gapSize, color);
+				break;
+
+			case 'none':
+				marker = {};
+				break;
+
+			case 'disc':
+			default:
+				marker = buildDisc(gapSize, color);
+				break;
 		}
 
 		marker._minWidth = marker._maxWidth = gapSize.width;
@@ -1614,24 +1685,108 @@ return /******/ (function(modules) { // webpackBootstrap
 		return marker;
 	};
 
-	DocMeasure.prototype.measureList = function(isOrdered, node) {
-		var style = this.styleStack.clone();
+	DocMeasure.prototype.buildOrderedMarker = function (counter, styleStack, type, separator) {
+		function prepareAlpha(counter) {
+			function toAlpha(num) {
+				return (num >= 26 ? toAlpha((num / 26 >> 0) - 1) : '') + 'abcdefghijklmnopqrstuvwxyz'[num % 26 >> 0];
+			}
 
-		var items = isOrdered ? node.ol : node.ul;
-		node._gapSize = this.gapSizeForList(isOrdered, items);
+			if (counter < 1) {
+				return counter.toString();
+			}
+
+			return toAlpha(counter - 1);
+		}
+
+		function prepareRoman(counter) {
+			if (counter < 1 || counter > 4999) {
+				return counter.toString();
+			}
+			var num = counter;
+			var lookup = {M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1}, roman = '', i;
+			for (i in lookup) {
+				while (num >= lookup[i]) {
+					roman += i;
+					num -= lookup[i];
+				}
+			}
+			return roman;
+		}
+
+		function prepareDecimal(counter) {
+			return counter.toString();
+		}
+
+		var counterText;
+		switch (type) {
+			case 'none':
+				counterText = null;
+				break;
+
+			case 'upper-alpha':
+				counterText = prepareAlpha(counter).toUpperCase();
+				break;
+
+			case 'lower-alpha':
+				counterText = prepareAlpha(counter);
+				break;
+
+			case 'upper-roman':
+				counterText = prepareRoman(counter);
+				break;
+
+			case 'lower-roman':
+				counterText = prepareRoman(counter).toLowerCase();
+				break;
+
+			case 'decimal':
+			default:
+				counterText = prepareDecimal(counter);
+				break;
+		}
+
+		if (counterText === null) {
+			return {};
+		}
+
+		if (separator) {
+			if (Array.isArray(separator)) {
+				if (separator[0]) {
+					counterText = separator[0] + counterText;
+				}
+
+				if (separator[1]) {
+					counterText += separator[1];
+				}
+				counterText += ' ';
+			} else {
+				counterText += separator + ' ';
+			}
+		}
+
+		var textArray = {text: counterText};
+		var markerColor = styleStack.getProperty('markerColor');
+		if (markerColor) {
+			textArray.color = markerColor;
+		}
+
+		return {_inlines: this.textTools.buildInlines(textArray, styleStack).items};
+	};
+
+	DocMeasure.prototype.measureUnorderedList = function (node) {
+		var style = this.styleStack.clone();
+		var items = node.ul;
+		node.type = node.type || 'disc';
+		node._gapSize = this.gapSizeForList();
 		node._minWidth = 0;
 		node._maxWidth = 0;
 
-		var counter = 1;
+		for (var i = 0, l = items.length; i < l; i++) {
+			var item = items[i] = this.measureNode(items[i]);
 
-		for(var i = 0, l = items.length; i < l; i++) {
-			var nextItem = items[i] = this.measureNode(items[i]);
-
-			var marker = counter++ + '. ';
-
-			if (!nextItem.ol && !nextItem.ul) {
-				nextItem.listMarker = this.buildMarker(isOrdered, nextItem.counter || marker, style, node._gapSize);
-			}  // TODO: else - nested lists numbering
+			if (!item.ol && !item.ul) {
+				item.listMarker = this.buildUnorderedMarker(style, node._gapSize, node.type);
+			}
 
 			node._minWidth = Math.max(node._minWidth, items[i]._minWidth + node._gapSize.width);
 			node._maxWidth = Math.max(node._maxWidth, items[i]._maxWidth + node._gapSize.width);
@@ -1640,11 +1795,58 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.measureColumns = function(node) {
+	DocMeasure.prototype.measureOrderedList = function (node) {
+		var style = this.styleStack.clone();
+		var items = node.ol;
+		node.type = node.type || 'decimal';
+		node.separator = node.separator || '.';
+		node.reversed = node.reversed || false;
+		if (!node.start) {
+			node.start = node.reversed ? items.length : 1;
+		}
+		node._gapSize = this.gapSizeForList();
+		node._minWidth = 0;
+		node._maxWidth = 0;
+
+		var counter = node.start;
+		for (var i = 0, l = items.length; i < l; i++) {
+			var item = items[i] = this.measureNode(items[i]);
+
+			if (!item.ol && !item.ul) {
+				item.listMarker = this.buildOrderedMarker(item.counter || counter, style, node.type, node.separator);
+				if (item.listMarker._inlines) {
+					node._gapSize.width = Math.max(node._gapSize.width, item.listMarker._inlines[0].width);
+				}
+			}  // TODO: else - nested lists numbering
+
+			node._minWidth = Math.max(node._minWidth, items[i]._minWidth);
+			node._maxWidth = Math.max(node._maxWidth, items[i]._maxWidth);
+
+			if (node.reversed) {
+				counter--;
+			} else {
+				counter++;
+			}
+		}
+
+		node._minWidth += node._gapSize.width;
+		node._maxWidth += node._gapSize.width;
+
+		for (var i = 0, l = items.length; i < l; i++) {
+			var item = items[i];
+			if (!item.ol && !item.ul) {
+				item.listMarker._minWidth = item.listMarker._maxWidth = node._gapSize.width;
+			}
+		}
+
+		return node;
+	};
+
+	DocMeasure.prototype.measureColumns = function (node) {
 		var columns = node.columns;
 		node._gap = this.styleStack.getProperty('columnGap') || 0;
 
-		for(var i = 0, l = columns.length; i < l; i++) {
+		for (var i = 0, l = columns.length; i < l; i++) {
 			columns[i] = this.measureNode(columns[i]);
 		}
 
@@ -1656,7 +1858,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.measureTable = function(node) {
+	DocMeasure.prototype.measureTable = function (node) {
 		extendTableWidths(node);
 		node._layout = getLayout(this.tableLayouts);
 		node._offsets = getOffsets(node._layout);
@@ -1664,21 +1866,27 @@ return /******/ (function(modules) { // webpackBootstrap
 		var colSpans = [];
 		var col, row, cols, rows;
 
-		for(col = 0, cols = node.table.body[0].length; col < cols; col++) {
+		for (col = 0, cols = node.table.body[0].length; col < cols; col++) {
 			var c = node.table.widths[col];
 			c._minWidth = 0;
 			c._maxWidth = 0;
 
-			for(row = 0, rows = node.table.body.length; row < rows; row++) {
+			for (row = 0, rows = node.table.body.length; row < rows; row++) {
 				var rowData = node.table.body[row];
 				var data = rowData[col];
+				if (data === undefined) {
+					console.error('Malformed table row ', rowData, 'in node ', node);
+					throw 'Malformed table row, a cell is undefined.';
+				}
+				if (data === null) { // transform to object
+					data = '';
+				}
 				if (!data._span) {
-					var _this = this;
 					data = rowData[col] = this.styleStack.auto(data, measureCb(this, data));
 
 					if (data.colSpan && data.colSpan > 1) {
 						markSpans(rowData, col, data.colSpan);
-						colSpans.push({ col: col, span: data.colSpan, minWidth: data._minWidth, maxWidth: data._maxWidth });
+						colSpans.push({col: col, span: data.colSpan, minWidth: data._minWidth, maxWidth: data._maxWidth});
 					} else {
 						c._minWidth = Math.max(c._minWidth, data._minWidth);
 						c._maxWidth = Math.max(c._maxWidth, data._maxWidth);
@@ -1701,7 +1909,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 
 		function measureCb(_this, data) {
-			return function() {
+			return function () {
 				if (data !== null && typeof data === 'object') {
 					data.fillColor = _this.styleStack.getProperty('fillColor');
 				}
@@ -1716,15 +1924,36 @@ return /******/ (function(modules) { // webpackBootstrap
 				layout = tableLayouts[layout];
 			}
 
+			/*jshint unused: false */
 			var defaultLayout = {
-				hLineWidth: function(i, node) { return 1; }, //return node.table.headerRows && i === node.table.headerRows && 3 || 0; },
-				vLineWidth: function(i, node) { return 1; },
-				hLineColor: function(i, node) { return 'black'; },
-				vLineColor: function(i, node) { return 'black'; },
-				paddingLeft: function(i, node) { return 4; }, //i && 4 || 0; },
-				paddingRight: function(i, node) { return 4; }, //(i < node.table.widths.length - 1) ? 4 : 0; },
-				paddingTop: function(i, node) { return 2; },
-				paddingBottom: function(i, node) { return 2; }
+				hLineWidth: function (i, node) {
+					return 1;
+				},
+				vLineWidth: function (i, node) {
+					return 1;
+				},
+				hLineColor: function (i, node) {
+					return 'black';
+				},
+				vLineColor: function (i, node) {
+					return 'black';
+				},
+				paddingLeft: function (i, node) {
+					return 4;
+				},
+				paddingRight: function (i, node) {
+					return 4;
+				},
+				paddingTop: function (i, node) {
+					return 2;
+				},
+				paddingBottom: function (i, node) {
+					return 2;
+				},
+				fillColor: function (i, node) {
+					return null;
+				},
+				defaultBorder: true
 			};
 
 			return pack(defaultLayout, layout);
@@ -1735,7 +1964,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			var totalOffset = 0;
 			var prevRightPadding = 0;
 
-			for(var i = 0, l = node.table.widths.length; i < l; i++) {
+			for (var i = 0, l = node.table.widths.length; i < l; i++) {
 				var lOffset = prevRightPadding + layout.vLineWidth(i, node) + layout.paddingLeft(i, node);
 				offsets.push(lOffset);
 				totalOffset += lOffset;
@@ -1763,7 +1992,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				if (minDifference > 0) {
 					q = minDifference / span.span;
 
-					for(j = 0; j < span.span; j++) {
+					for (j = 0; j < span.span; j++) {
 						node.table.widths[span.col + j]._minWidth += q;
 					}
 				}
@@ -1771,7 +2000,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				if (maxDifference > 0) {
 					q = maxDifference / span.span;
 
-					for(j = 0; j < span.span; j++) {
+					for (j = 0; j < span.span; j++) {
 						node.table.widths[span.col + j]._maxWidth += q;
 					}
 				}
@@ -1779,11 +2008,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		function getMinMax(col, span, offsets) {
-			var result = { minWidth: 0, maxWidth: 0 };
+			var result = {minWidth: 0, maxWidth: 0};
 
-			for(var i = 0; i < span; i++) {
-				result.minWidth += node.table.widths[col + i]._minWidth + (i? offsets.offsets[col + i] : 0);
-				result.maxWidth += node.table.widths[col + i]._maxWidth + (i? offsets.offsets[col + i] : 0);
+			for (var i = 0; i < span; i++) {
+				result.minWidth += node.table.widths[col + i]._minWidth + (i ? offsets.offsets[col + i] : 0);
+				result.maxWidth += node.table.widths[col + i]._maxWidth + (i ? offsets.offsets[col + i] : 0);
 			}
 
 			return result;
@@ -1817,47 +2046,47 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			if (typeof node.table.widths === 'string' || node.table.widths instanceof String) {
-				node.table.widths = [ node.table.widths ];
+				node.table.widths = [node.table.widths];
 
-				while(node.table.widths.length < node.table.body[0].length) {
+				while (node.table.widths.length < node.table.body[0].length) {
 					node.table.widths.push(node.table.widths[node.table.widths.length - 1]);
 				}
 			}
 
-			for(var i = 0, l = node.table.widths.length; i < l; i++) {
+			for (var i = 0, l = node.table.widths.length; i < l; i++) {
 				var w = node.table.widths[i];
 				if (typeof w === 'number' || w instanceof Number || typeof w === 'string' || w instanceof String) {
-					node.table.widths[i] = { width: w };
+					node.table.widths[i] = {width: w};
 				}
 			}
 		}
 	};
 
-	DocMeasure.prototype.measureCanvas = function(node) {
+	DocMeasure.prototype.measureCanvas = function (node) {
 		var w = 0, h = 0;
 
-		for(var i = 0, l = node.canvas.length; i < l; i++) {
+		for (var i = 0, l = node.canvas.length; i < l; i++) {
 			var vector = node.canvas[i];
 
-			switch(vector.type) {
-			case 'ellipse':
-				w = Math.max(w, vector.x + vector.r1);
-				h = Math.max(h, vector.y + vector.r2);
-				break;
-			case 'rect':
-				w = Math.max(w, vector.x + vector.w);
-				h = Math.max(h, vector.y + vector.h);
-				break;
-			case 'line':
-				w = Math.max(w, vector.x1, vector.x2);
-				h = Math.max(h, vector.y1, vector.y2);
-				break;
-			case 'polyline':
-				for(var i2 = 0, l2 = vector.points.length; i2 < l2; i2++) {
-					w = Math.max(w, vector.points[i2].x);
-					h = Math.max(h, vector.points[i2].y);
-				}
-				break;
+			switch (vector.type) {
+				case 'ellipse':
+					w = Math.max(w, vector.x + vector.r1);
+					h = Math.max(h, vector.y + vector.r2);
+					break;
+				case 'rect':
+					w = Math.max(w, vector.x + vector.w);
+					h = Math.max(h, vector.y + vector.h);
+					break;
+				case 'line':
+					w = Math.max(w, vector.x1, vector.x2);
+					h = Math.max(h, vector.y1, vector.y2);
+					break;
+				case 'polyline':
+					for (var i2 = 0, l2 = vector.points.length; i2 < l2; i2++) {
+						w = Math.max(w, vector.points[i2].x);
+						h = Math.max(h, vector.points[i2].y);
+					}
+					break;
 			}
 		}
 
@@ -1867,7 +2096,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		return node;
 	};
 
-	DocMeasure.prototype.measureQr = function(node) {
+	DocMeasure.prototype.measureQr = function (node) {
 		node = qrEncoder.measure(node);
 		node._alignment = this.styleStack.getProperty('alignment');
 		return node;
@@ -1877,36 +2106,36 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 8 */
-/***/ function(module, exports) {
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var WORD_RE = /([^ ,\/!.?:;\-\n]*[ ,\/!.?:;\-]*)|\n/g;
-	// /\S*\s*/g to be considered (I'm not sure however - we shouldn't split 'aaa !!!!')
+	var LineBreaker = __webpack_require__(8);
 
 	var LEADING = /^(\s)+/g;
 	var TRAILING = /(\s)+$/g;
 
 	/**
-	* Creates an instance of TextTools - text measurement utility
-	*
-	* @constructor
-	* @param {FontProvider} fontProvider
-	*/
+	 * Creates an instance of TextTools - text measurement utility
+	 *
+	 * @constructor
+	 * @param {FontProvider} fontProvider
+	 */
 	function TextTools(fontProvider) {
 		this.fontProvider = fontProvider;
 	}
 
 	/**
-	* Converts an array of strings (or inline-definition-objects) into a set of inlines
-	* and their min/max widths
-	* @param  {Object} textArray - an array of inline-definition-objects (or strings)
-	* @param  {Number} maxWidth - max width a single Line should have
-	* @return {Array} an array of Lines
-	*/
-	TextTools.prototype.buildInlines = function(textArray, styleContextStack) {
+	 * Converts an array of strings (or inline-definition-objects) into a collection
+	 * of inlines and calculated minWidth/maxWidth.
+	 * and their min/max widths
+	 * @param  {Object} textArray - an array of inline-definition-objects (or strings)
+	 * @param  {Object} styleContextStack current style stack
+	 * @return {Object}                   collection of inlines, minWidth, maxWidth
+	 */
+	TextTools.prototype.buildInlines = function (textArray, styleContextStack) {
 		var measured = measure(this.fontProvider, textArray, styleContextStack);
 
 		var minWidth = 0,
@@ -1917,7 +2146,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			minWidth = Math.max(minWidth, inline.width - inline.leadingCut - inline.trailingCut);
 
 			if (!currentLineWidth) {
-				currentLineWidth = { width: 0, leadingCut: inline.leadingCut, trailingCut: 0 };
+				currentLineWidth = {width: 0, leadingCut: inline.leadingCut, trailingCut: 0};
 			}
 
 			currentLineWidth.width += inline.width;
@@ -1929,6 +2158,10 @@ return /******/ (function(modules) { // webpackBootstrap
 				currentLineWidth = null;
 			}
 		});
+
+		if (getStyleProperty({}, styleContextStack, 'noWrap', false)) {
+			minWidth = maxWidth;
+		}
 
 		return {
 			items: measured,
@@ -1942,13 +2175,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	/**
-	* Returns size of the specified string (without breaking it) using the current style
-	* @param  {String} text              text to be measured
-	* @param  {Object} styleContextStack current style stack
-	* @return {Object}                   size of the specified string
-	*/
-	TextTools.prototype.sizeOfString = function(text, styleContextStack) {
-		text = text.replace('\t', '    ');
+	 * Returns size of the specified string (without breaking it) using the current style
+	 * @param  {String} text              text to be measured
+	 * @param  {Object} styleContextStack current style stack
+	 * @return {Object}                   size of the specified string
+	 */
+	TextTools.prototype.sizeOfString = function (text, styleContextStack) {
+		text = text ? text.toString().replace('\t', '    ') : '';
 
 		//TODO: refactor - extract from measure
 		var fontName = getStyleProperty({}, styleContextStack, 'font', 'Roboto');
@@ -1960,41 +2193,39 @@ return /******/ (function(modules) { // webpackBootstrap
 		var font = this.fontProvider.provideFont(fontName, bold, italics);
 
 		return {
-			width: font.widthOfString(removeDiacritics(text), fontSize),
+			width: font.widthOfString(text, fontSize),
 			height: font.lineHeight(fontSize) * lineHeight,
 			fontSize: fontSize,
 			lineHeight: lineHeight,
 			ascender: font.ascender / 1000 * fontSize,
-			decender: font.decender / 1000 * fontSize
+			descender: font.descender / 1000 * fontSize
 		};
 	};
 
-	function splitWords(text) {
+	function splitWords(text, noWrap) {
 		var results = [];
 		text = text.replace('\t', '    ');
 
-		var array = text.match(WORD_RE);
+		if (noWrap) {
+			results.push({text: text});
+			return results;
+		}
 
-		// i < l - 1, because the last match is always an empty string
-		// other empty strings however are treated as new-lines
-		for(var i = 0, l = array.length; i < l - 1; i++) {
-			var item = array[i];
+		var breaker = new LineBreaker(text);
+		var last = 0;
+		var bk;
 
-			var isNewLine = item.length === 0;
+		while (bk = breaker.nextBreak()) {
+			var word = text.slice(last, bk.position);
 
-			if (!isNewLine) {
-				results.push({text: item});
+			if (bk.required || word.match(/\r?\n$|\r$/)) { // new line
+				word = word.replace(/\r?\n$|\r$/, '');
+				results.push({text: word, lineEnd: true});
+			} else {
+				results.push({text: word});
 			}
-			else {
-				var shouldAddLine = (results.length === 0 || results[results.length - 1].lineEnd);
 
-				if (shouldAddLine) {
-					results.push({ text: '', lineEnd: true });
-				}
-				else {
-					results[results.length - 1].lineEnd = true;
-				}
-			}
+			last = bk.position;
 		}
 
 		return results;
@@ -2004,7 +2235,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		destination = destination || {};
 		source = source || {}; //TODO: default style
 
-		for(var key in source) {
+		for (var key in source) {
 			if (key != 'text' && source.hasOwnProperty(key)) {
 				destination[key] = source[key];
 			}
@@ -2013,26 +2244,27 @@ return /******/ (function(modules) { // webpackBootstrap
 		return destination;
 	}
 
-	function normalizeTextArray(array) {
+	function normalizeTextArray(array, styleContextStack) {
 		var results = [];
 
-		if (typeof array == 'string' || array instanceof String) {
-			array = [ array ];
+		if (!Array.isArray(array)) {
+			array = [array];
 		}
 
-		for(var i = 0, l = array.length; i < l; i++) {
+		for (var i = 0, l = array.length; i < l; i++) {
 			var item = array[i];
 			var style = null;
 			var words;
 
-			if (typeof item == 'string' || item instanceof String) {
-				words = splitWords(item);
-			} else {
-				words = splitWords(item.text);
+			var noWrap = getStyleProperty(item || {}, styleContextStack, 'noWrap', false);
+			if (item !== null && (typeof item === 'object' || item instanceof Object)) {
+				words = splitWords(normalizeString(item.text), noWrap);
 				style = copyStyle(item);
+			} else {
+				words = splitWords(normalizeString(item), noWrap);
 			}
 
-			for(var i2 = 0, l2 = words.length; i2 < l2; i2++) {
+			for (var i2 = 0, l2 = words.length; i2 < l2; i2++) {
 				var result = {
 					text: words[i2].text
 				};
@@ -2050,14 +2282,16 @@ return /******/ (function(modules) { // webpackBootstrap
 		return results;
 	}
 
-	//TODO: support for other languages (currently only polish is supported)
-	var diacriticsMap = { 'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z', 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z' };
-	// '  << atom.io workaround
-
-	function removeDiacritics(text) {
-		return text.replace(/[^A-Za-z0-9\[\] ]/g, function(a) {
-			return diacriticsMap[a] || a;
-		});
+	function normalizeString(value) {
+		if (value === undefined || value === null) {
+			return '';
+		} else if (typeof value === 'number') {
+			return value.toString();
+		} else if (typeof value === 'string' || value instanceof String) {
+			return value;
+		} else {
+			return value.toString();
+		}
 	}
 
 	function getStyleProperty(item, styleContextStack, property, defaultValue) {
@@ -2068,9 +2302,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			return item[property];
 		}
 
-		if (!styleContextStack) return defaultValue;
+		if (!styleContextStack) {
+			return defaultValue;
+		}
 
-		styleContextStack.auto(item, function() {
+		styleContextStack.auto(item, function () {
 			value = styleContextStack.getProperty(property);
 		});
 
@@ -2082,9 +2318,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	function measure(fontProvider, textArray, styleContextStack) {
-		var normalized = normalizeTextArray(textArray);
+		var normalized = normalizeTextArray(textArray, styleContextStack);
 
-		normalized.forEach(function(item) {
+		normalized.forEach(function (item) {
 			var fontName = getStyleProperty(item, styleContextStack, 'font', 'Roboto');
 			var fontSize = getStyleProperty(item, styleContextStack, 'fontSize', 12);
 			var bold = getStyleProperty(item, styleContextStack, 'bold', false);
@@ -2095,26 +2331,25 @@ return /******/ (function(modules) { // webpackBootstrap
 			var decorationStyle = getStyleProperty(item, styleContextStack, 'decorationStyle', null);
 			var background = getStyleProperty(item, styleContextStack, 'background', null);
 			var lineHeight = getStyleProperty(item, styleContextStack, 'lineHeight', 1);
+			var link = getStyleProperty(item, styleContextStack, 'link', null);
 
 			var font = fontProvider.provideFont(fontName, bold, italics);
 
 			// TODO: character spacing
-			item.width = font.widthOfString(removeDiacritics(item.text), fontSize);
+			item.width = font.widthOfString(item.text, fontSize);
 			item.height = font.lineHeight(fontSize) * lineHeight;
 
 			var leadingSpaces = item.text.match(LEADING);
 			var trailingSpaces = item.text.match(TRAILING);
 			if (leadingSpaces) {
 				item.leadingCut = font.widthOfString(leadingSpaces[0], fontSize);
-			}
-			else {
+			} else {
 				item.leadingCut = 0;
 			}
 
 			if (trailingSpaces) {
 				item.trailingCut = font.widthOfString(trailingSpaces[0], fontSize);
-			}
-			else {
+			} else {
 				item.trailingCut = 0;
 			}
 
@@ -2126,50 +2361,353 @@ return /******/ (function(modules) { // webpackBootstrap
 			item.decorationColor = decorationColor;
 			item.decorationStyle = decorationStyle;
 			item.background = background;
+			item.link = link;
 		});
 
 		return normalized;
 	}
 
 	/****TESTS**** (add a leading '/' to uncomment)
-	TextTools.prototype.splitWords = splitWords;
-	TextTools.prototype.normalizeTextArray = normalizeTextArray;
-	TextTools.prototype.measure = measure;
-	// */
+	 TextTools.prototype.splitWords = splitWords;
+	 TextTools.prototype.normalizeTextArray = normalizeTextArray;
+	 TextTools.prototype.measure = measure;
+	 // */
 
 
 	module.exports = TextTools;
 
 
 /***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(__dirname) {// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var AI, AL, BA, BK, CB, CI_BRK, CJ, CP_BRK, CR, DI_BRK, ID, IN_BRK, LF, LineBreaker, NL, NS, PR_BRK, SA, SG, SP, UnicodeTrie, WJ, XX, base64, characterClasses, classTrie, data, fs, pairTable, _ref, _ref1;
+
+	  UnicodeTrie = __webpack_require__(9);
+
+	  fs = __webpack_require__(10);
+
+	  base64 = __webpack_require__(11);
+
+	  _ref = __webpack_require__(12), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+
+	  _ref1 = __webpack_require__(13), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+
+	  data = base64.toByteArray(fs.readFileSync(__dirname + '/classes.trie', 'base64'));
+
+	  classTrie = new UnicodeTrie(data);
+
+	  LineBreaker = (function() {
+	    var Break, mapClass, mapFirst;
+
+	    function LineBreaker(string) {
+	      this.string = string;
+	      this.pos = 0;
+	      this.lastPos = 0;
+	      this.curClass = null;
+	      this.nextClass = null;
+	    }
+
+	    LineBreaker.prototype.nextCodePoint = function() {
+	      var code, next;
+	      code = this.string.charCodeAt(this.pos++);
+	      next = this.string.charCodeAt(this.pos);
+	      if ((0xd800 <= code && code <= 0xdbff) && (0xdc00 <= next && next <= 0xdfff)) {
+	        this.pos++;
+	        return ((code - 0xd800) * 0x400) + (next - 0xdc00) + 0x10000;
+	      }
+	      return code;
+	    };
+
+	    mapClass = function(c) {
+	      switch (c) {
+	        case AI:
+	          return AL;
+	        case SA:
+	        case SG:
+	        case XX:
+	          return AL;
+	        case CJ:
+	          return NS;
+	        default:
+	          return c;
+	      }
+	    };
+
+	    mapFirst = function(c) {
+	      switch (c) {
+	        case LF:
+	        case NL:
+	          return BK;
+	        case CB:
+	          return BA;
+	        case SP:
+	          return WJ;
+	        default:
+	          return c;
+	      }
+	    };
+
+	    LineBreaker.prototype.nextCharClass = function(first) {
+	      if (first == null) {
+	        first = false;
+	      }
+	      return mapClass(classTrie.get(this.nextCodePoint()));
+	    };
+
+	    Break = (function() {
+	      function Break(position, required) {
+	        this.position = position;
+	        this.required = required != null ? required : false;
+	      }
+
+	      return Break;
+
+	    })();
+
+	    LineBreaker.prototype.nextBreak = function() {
+	      var cur, lastClass, shouldBreak;
+	      if (this.curClass == null) {
+	        this.curClass = mapFirst(this.nextCharClass());
+	      }
+	      while (this.pos < this.string.length) {
+	        this.lastPos = this.pos;
+	        lastClass = this.nextClass;
+	        this.nextClass = this.nextCharClass();
+	        if (this.curClass === BK || (this.curClass === CR && this.nextClass !== LF)) {
+	          this.curClass = mapFirst(mapClass(this.nextClass));
+	          return new Break(this.lastPos, true);
+	        }
+	        cur = (function() {
+	          switch (this.nextClass) {
+	            case SP:
+	              return this.curClass;
+	            case BK:
+	            case LF:
+	            case NL:
+	              return BK;
+	            case CR:
+	              return CR;
+	            case CB:
+	              return BA;
+	          }
+	        }).call(this);
+	        if (cur != null) {
+	          this.curClass = cur;
+	          if (this.nextClass === CB) {
+	            return new Break(this.lastPos);
+	          }
+	          continue;
+	        }
+	        shouldBreak = false;
+	        switch (pairTable[this.curClass][this.nextClass]) {
+	          case DI_BRK:
+	            shouldBreak = true;
+	            break;
+	          case IN_BRK:
+	            shouldBreak = lastClass === SP;
+	            break;
+	          case CI_BRK:
+	            shouldBreak = lastClass === SP;
+	            if (!shouldBreak) {
+	              continue;
+	            }
+	            break;
+	          case CP_BRK:
+	            if (lastClass !== SP) {
+	              continue;
+	            }
+	        }
+	        this.curClass = this.nextClass;
+	        if (shouldBreak) {
+	          return new Break(this.lastPos);
+	        }
+	      }
+	      if (this.pos >= this.string.length) {
+	        if (this.lastPos < this.string.length) {
+	          this.lastPos = this.string.length;
+	          return new Break(this.string.length);
+	        } else {
+	          return null;
+	        }
+	      }
+	    };
+
+	    return LineBreaker;
+
+	  })();
+
+	  module.exports = LineBreaker;
+
+	}).call(this);
+
+	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
+
+/***/ },
 /* 9 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_9__;
+
+/***/ },
+/* 10 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	module.exports = {};
+
+/***/ },
+/* 11 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_11__;
+
+/***/ },
+/* 12 */
+/***/ function(module, exports) {
+
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var AI, AL, B2, BA, BB, BK, CB, CJ, CL, CM, CP, CR, EX, GL, H2, H3, HL, HY, ID, IN, IS, JL, JT, JV, LF, NL, NS, NU, OP, PO, PR, QU, RI, SA, SG, SP, SY, WJ, XX, ZW;
+
+	  exports.OP = OP = 0;
+
+	  exports.CL = CL = 1;
+
+	  exports.CP = CP = 2;
+
+	  exports.QU = QU = 3;
+
+	  exports.GL = GL = 4;
+
+	  exports.NS = NS = 5;
+
+	  exports.EX = EX = 6;
+
+	  exports.SY = SY = 7;
+
+	  exports.IS = IS = 8;
+
+	  exports.PR = PR = 9;
+
+	  exports.PO = PO = 10;
+
+	  exports.NU = NU = 11;
+
+	  exports.AL = AL = 12;
+
+	  exports.HL = HL = 13;
+
+	  exports.ID = ID = 14;
+
+	  exports.IN = IN = 15;
+
+	  exports.HY = HY = 16;
+
+	  exports.BA = BA = 17;
+
+	  exports.BB = BB = 18;
+
+	  exports.B2 = B2 = 19;
+
+	  exports.ZW = ZW = 20;
+
+	  exports.CM = CM = 21;
+
+	  exports.WJ = WJ = 22;
+
+	  exports.H2 = H2 = 23;
+
+	  exports.H3 = H3 = 24;
+
+	  exports.JL = JL = 25;
+
+	  exports.JV = JV = 26;
+
+	  exports.JT = JT = 27;
+
+	  exports.RI = RI = 28;
+
+	  exports.AI = AI = 29;
+
+	  exports.BK = BK = 30;
+
+	  exports.CB = CB = 31;
+
+	  exports.CJ = CJ = 32;
+
+	  exports.CR = CR = 33;
+
+	  exports.LF = LF = 34;
+
+	  exports.NL = NL = 35;
+
+	  exports.SA = SA = 36;
+
+	  exports.SG = SG = 37;
+
+	  exports.SP = SP = 38;
+
+	  exports.XX = XX = 39;
+
+	}).call(this);
+
+
+/***/ },
+/* 13 */
+/***/ function(module, exports) {
+
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var CI_BRK, CP_BRK, DI_BRK, IN_BRK, PR_BRK;
+
+	  exports.DI_BRK = DI_BRK = 0;
+
+	  exports.IN_BRK = IN_BRK = 1;
+
+	  exports.CI_BRK = CI_BRK = 2;
+
+	  exports.CP_BRK = CP_BRK = 3;
+
+	  exports.PR_BRK = PR_BRK = 4;
+
+	  exports.pairTable = [[PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, CP_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, DI_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, DI_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, PR_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK], [IN_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, IN_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, DI_BRK], [DI_BRK, PR_BRK, PR_BRK, IN_BRK, IN_BRK, IN_BRK, PR_BRK, PR_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK, IN_BRK, DI_BRK, DI_BRK, PR_BRK, CI_BRK, PR_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, DI_BRK, IN_BRK]];
+
+	}).call(this);
+
+
+/***/ },
+/* 14 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
 	'use strict';
 
 	/**
-	* Creates an instance of StyleContextStack used for style inheritance and style overrides
-	*
-	* @constructor
-	* @this {StyleContextStack}
-	* @param {Object} named styles dictionary
-	* @param {Object} optional default style definition
-	*/
-	function StyleContextStack (styleDictionary, defaultStyle) {
+	 * Creates an instance of StyleContextStack used for style inheritance and style overrides
+	 *
+	 * @constructor
+	 * @this {StyleContextStack}
+	 * @param {Object} named styles dictionary
+	 * @param {Object} optional default style definition
+	 */
+	function StyleContextStack(styleDictionary, defaultStyle) {
 		this.defaultStyle = defaultStyle || {};
 		this.styleDictionary = styleDictionary;
 		this.styleOverrides = [];
 	}
 
 	/**
-	* Creates cloned version of current stack
-	* @return {StyleContextStack} current stack snapshot
-	*/
-	StyleContextStack.prototype.clone = function() {
+	 * Creates cloned version of current stack
+	 * @return {StyleContextStack} current stack snapshot
+	 */
+	StyleContextStack.prototype.clone = function () {
 		var stack = new StyleContextStack(this.styleDictionary, this.defaultStyle);
 
-		this.styleOverrides.forEach(function(item) {
+		this.styleOverrides.forEach(function (item) {
 			stack.styleOverrides.push(item);
 		});
 
@@ -2177,51 +2715,53 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	/**
-	* Pushes style-name or style-overrides-object onto the stack for future evaluation
-	*
-	* @param {String|Object} styleNameOrOverride style-name (referring to styleDictionary) or
-	*                                            a new dictionary defining overriding properties
-	*/
-	StyleContextStack.prototype.push = function(styleNameOrOverride) {
+	 * Pushes style-name or style-overrides-object onto the stack for future evaluation
+	 *
+	 * @param {String|Object} styleNameOrOverride style-name (referring to styleDictionary) or
+	 *                                            a new dictionary defining overriding properties
+	 */
+	StyleContextStack.prototype.push = function (styleNameOrOverride) {
 		this.styleOverrides.push(styleNameOrOverride);
 	};
 
 	/**
-	* Removes last style-name or style-overrides-object from the stack
-	*
-	* @param {Number} howMany - optional number of elements to be popped (if not specified,
-	*                           one element will be removed from the stack)
-	*/
-	StyleContextStack.prototype.pop = function(howMany) {
+	 * Removes last style-name or style-overrides-object from the stack
+	 *
+	 * @param {Number} howMany - optional number of elements to be popped (if not specified,
+	 *                           one element will be removed from the stack)
+	 */
+	StyleContextStack.prototype.pop = function (howMany) {
 		howMany = howMany || 1;
 
-		while(howMany-- > 0) {
+		while (howMany-- > 0) {
 			this.styleOverrides.pop();
 		}
 	};
 
 	/**
-	* Creates a set of named styles or/and a style-overrides-object based on the item,
-	* pushes those elements onto the stack for future evaluation and returns the number
-	* of elements pushed, so they can be easily poped then.
-	*
-	* @param {Object} item - an object with optional style property and/or style overrides
-	* @return the number of items pushed onto the stack
-	*/
-	StyleContextStack.prototype.autopush = function(item) {
-		if (typeof item === 'string' || item instanceof String) return 0;
+	 * Creates a set of named styles or/and a style-overrides-object based on the item,
+	 * pushes those elements onto the stack for future evaluation and returns the number
+	 * of elements pushed, so they can be easily poped then.
+	 *
+	 * @param {Object} item - an object with optional style property and/or style overrides
+	 * @return the number of items pushed onto the stack
+	 */
+	StyleContextStack.prototype.autopush = function (item) {
+		if (typeof item === 'string' || item instanceof String) {
+			return 0;
+		}
 
 		var styleNames = [];
 
 		if (item.style) {
-			if (item.style instanceof Array) {
+			if (Array.isArray(item.style)) {
 				styleNames = item.style;
 			} else {
-				styleNames = [ item.style ];
+				styleNames = [item.style];
 			}
 		}
 
-		for(var i = 0, l = styleNames.length; i < l; i++) {
+		for (var i = 0, l = styleNames.length; i < l; i++) {
 			this.push(styleNames[i]);
 		}
 
@@ -2241,14 +2781,16 @@ return /******/ (function(modules) { // webpackBootstrap
 			'decorationStyle',
 			'decorationColor',
 			'background',
-			'lineHeight'
-			//'tableCellPadding'
-			// 'cellBorder',
-			// 'headerCellBorder',
-			// 'oddRowCellBorder',
-			// 'evenRowCellBorder',
-			// 'tableBorder'
-		].forEach(function(key) {
+			'lineHeight',
+			'noWrap',
+			'markerColor'
+				//'tableCellPadding'
+				// 'cellBorder',
+				// 'headerCellBorder',
+				// 'oddRowCellBorder',
+				// 'evenRowCellBorder',
+				// 'tableBorder'
+		].forEach(function (key) {
 			if (item[key] !== undefined && item[key] !== null) {
 				styleOverrideObject[key] = item[key];
 				pushSOO = true;
@@ -2263,14 +2805,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	/**
-	* Automatically pushes elements onto the stack, using autopush based on item,
-	* executes callback and then pops elements back. Returns value returned by callback
-	*
-	* @param  {Object}   item - an object with optional style property and/or style overrides
-	* @param  {Function} function to be called between autopush and pop
-	* @return {Object} value returned by callback
-	*/
-	StyleContextStack.prototype.auto = function(item, callback) {
+	 * Automatically pushes elements onto the stack, using autopush based on item,
+	 * executes callback and then pops elements back. Returns value returned by callback
+	 *
+	 * @param  {Object}   item - an object with optional style property and/or style overrides
+	 * @param  {Function} function to be called between autopush and pop
+	 * @return {Object} value returned by callback
+	 */
+	StyleContextStack.prototype.auto = function (item, callback) {
 		var pushedItems = this.autopush(item);
 		var result = callback();
 
@@ -2282,17 +2824,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	/**
-	* Evaluates stack and returns value of a named property
-	*
-	* @param {String} property - property name
-	* @return property value or null if not found
-	*/
-	StyleContextStack.prototype.getProperty = function(property) {
+	 * Evaluates stack and returns value of a named property
+	 *
+	 * @param {String} property - property name
+	 * @return property value or null if not found
+	 */
+	StyleContextStack.prototype.getProperty = function (property) {
 		if (this.styleOverrides) {
-			for(var i = this.styleOverrides.length - 1; i >= 0; i--) {
+			for (var i = this.styleOverrides.length - 1; i >= 0; i--) {
 				var item = this.styleOverrides[i];
 
-				if (typeof item == 'string' || item instanceof String) {
+				if (typeof item === 'string' || item instanceof String) {
 					// named-style-override
 
 					var style = this.styleDictionary[item];
@@ -2315,7 +2857,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 10 */
+/* 15 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2330,7 +2872,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			fixedColumns = [],
 			initial_availableWidth = availableWidth;
 
-		columns.forEach(function(column) {
+		columns.forEach(function (column) {
 			if (isAutoColumn(column)) {
 				autoColumns.push(column);
 				autoMin += column._minWidth;
@@ -2344,10 +2886,10 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		});
 
-		fixedColumns.forEach(function(col) {
+		fixedColumns.forEach(function (col) {
 			// width specified as %
-			if (typeof col.width === 'string' && /\d+%/.test(col.width) ) {
-				col.width = parseFloat(col.width)*initial_availableWidth/100;
+			if (typeof col.width === 'string' && /\d+%/.test(col.width)) {
+				col.width = parseFloat(col.width) * initial_availableWidth / 100;
 			}
 			if (col.width < (col._minWidth) && col.elasticWidth) {
 				col._calcWidth = col._minWidth;
@@ -2368,17 +2910,17 @@ return /******/ (function(modules) { // webpackBootstrap
 			// that's actually pretty bad situation with PDF as we have no horizontal scroll
 			// no easy workaround (unless we decide, in the future, to split single words)
 			// currently we simply use minWidths for all columns
-			autoColumns.forEach(function(col) {
+			autoColumns.forEach(function (col) {
 				col._calcWidth = col._minWidth;
 			});
 
-			starColumns.forEach(function(col) {
+			starColumns.forEach(function (col) {
 				col._calcWidth = starMaxMin; // starMaxMin already contains padding
 			});
 		} else {
 			if (maxW < availableWidth) {
 				// case 2 - we can fit rest of the table within available space
-				autoColumns.forEach(function(col) {
+				autoColumns.forEach(function (col) {
 					col._calcWidth = col._maxWidth;
 					availableWidth -= col._calcWidth;
 				});
@@ -2387,7 +2929,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				var W = availableWidth - minW;
 				var D = maxW - minW;
 
-				autoColumns.forEach(function(col) {
+				autoColumns.forEach(function (col) {
 					var d = col._maxWidth - col._minWidth;
 					col._calcWidth = col._minWidth + d * W / D;
 					availableWidth -= col._calcWidth;
@@ -2397,7 +2939,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			if (starColumns.length > 0) {
 				var starSize = availableWidth / starColumns.length;
 
-				starColumns.forEach(function(col) {
+				starColumns.forEach(function (col) {
 					col._calcWidth = starSize;
 				});
 			}
@@ -2414,12 +2956,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	//TODO: refactor and reuse in measureTable
 	function measureMinMax(columns) {
-		var result = { min: 0, max: 0 };
+		var result = {min: 0, max: 0};
 
-		var maxStar = { min: 0, max: 0 };
+		var maxStar = {min: 0, max: 0};
 		var starCount = 0;
 
-		for(var i = 0, l = columns.length; i < l; i++) {
+		for (var i = 0, l = columns.length; i < l; i++) {
 			var c = columns[i];
 
 			if (isStarColumn(c)) {
@@ -2431,7 +2973,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				result.max += c._maxWidth;
 			} else {
 				result.min += ((c.width !== undefined && c.width) || c._minWidth);
-				result.max += ((c.width  !== undefined && c.width) || c._maxWidth);
+				result.max += ((c.width !== undefined && c.width) || c._maxWidth);
 			}
 		}
 
@@ -2444,9 +2986,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	/**
-	* Calculates column widths
-	* @private
-	*/
+	 * Calculates column widths
+	 * @private
+	 */
 	module.exports = {
 		buildColumnWidths: buildColumnWidths,
 		measureMinMax: measureMinMax,
@@ -2456,7 +2998,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 11 */
+/* 16 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2465,11 +3007,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	function pack() {
 		var result = {};
 
-		for(var i = 0, l = arguments.length; i < l; i++) {
+		for (var i = 0, l = arguments.length; i < l; i++) {
 			var obj = arguments[i];
 
 			if (obj) {
-				for(var key in obj) {
+				for (var key in obj) {
 					if (obj.hasOwnProperty(key)) {
 						result[key] = obj[key];
 					}
@@ -2481,24 +3023,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	function offsetVector(vector, x, y) {
-		switch(vector.type) {
-		case 'ellipse':
-		case 'rect':
-			vector.x += x;
-			vector.y += y;
-			break;
-		case 'line':
-			vector.x1 += x;
-			vector.x2 += x;
-			vector.y1 += y;
-			vector.y2 += y;
-			break;
-		case 'polyline':
-			for(var i = 0, l = vector.points.length; i < l; i++) {
-				vector.points[i].x += x;
-				vector.points[i].y += y;
-			}
-			break;
+		switch (vector.type) {
+			case 'ellipse':
+			case 'rect':
+				vector.x += x;
+				vector.y += y;
+				break;
+			case 'line':
+				vector.x1 += x;
+				vector.x2 += x;
+				vector.y1 += y;
+				vector.y2 += y;
+				break;
+			case 'polyline':
+				for (var i = 0, l = vector.points.length; i < l; i++) {
+					vector.points[i].x += x;
+					vector.points[i].y += y;
+				}
+				break;
 		}
 	}
 
@@ -2524,7 +3066,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 12 */
+/* 17 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -2549,46 +3091,46 @@ return /******/ (function(modules) { // webpackBootstrap
 	// the numbers in the specficiation. see augumenteccs below for the reason.
 	var VERSIONS = [
 		null,
-		[[10, 7,17,13], [ 1, 1, 1, 1], []],
-		[[16,10,28,22], [ 1, 1, 1, 1], [4,16]],
-		[[26,15,22,18], [ 1, 1, 2, 2], [4,20]],
-		[[18,20,16,26], [ 2, 1, 4, 2], [4,24]],
-		[[24,26,22,18], [ 2, 1, 4, 4], [4,28]],
-		[[16,18,28,24], [ 4, 2, 4, 4], [4,32]],
-		[[18,20,26,18], [ 4, 2, 5, 6], [4,20,36]],
-		[[22,24,26,22], [ 4, 2, 6, 6], [4,22,40]],
-		[[22,30,24,20], [ 5, 2, 8, 8], [4,24,44]],
-		[[26,18,28,24], [ 5, 4, 8, 8], [4,26,48]],
-		[[30,20,24,28], [ 5, 4,11, 8], [4,28,52]],
-		[[22,24,28,26], [ 8, 4,11,10], [4,30,56]],
-		[[22,26,22,24], [ 9, 4,16,12], [4,32,60]],
-		[[24,30,24,20], [ 9, 4,16,16], [4,24,44,64]],
-		[[24,22,24,30], [10, 6,18,12], [4,24,46,68]],
-		[[28,24,30,24], [10, 6,16,17], [4,24,48,72]],
-		[[28,28,28,28], [11, 6,19,16], [4,28,52,76]],
-		[[26,30,28,28], [13, 6,21,18], [4,28,54,80]],
-		[[26,28,26,26], [14, 7,25,21], [4,28,56,84]],
-		[[26,28,28,30], [16, 8,25,20], [4,32,60,88]],
-		[[26,28,30,28], [17, 8,25,23], [4,26,48,70,92]],
-		[[28,28,24,30], [17, 9,34,23], [4,24,48,72,96]],
-		[[28,30,30,30], [18, 9,30,25], [4,28,52,76,100]],
-		[[28,30,30,30], [20,10,32,27], [4,26,52,78,104]],
-		[[28,26,30,30], [21,12,35,29], [4,30,56,82,108]],
-		[[28,28,30,28], [23,12,37,34], [4,28,56,84,112]],
-		[[28,30,30,30], [25,12,40,34], [4,32,60,88,116]],
-		[[28,30,30,30], [26,13,42,35], [4,24,48,72,96,120]],
-		[[28,30,30,30], [28,14,45,38], [4,28,52,76,100,124]],
-		[[28,30,30,30], [29,15,48,40], [4,24,50,76,102,128]],
-		[[28,30,30,30], [31,16,51,43], [4,28,54,80,106,132]],
-		[[28,30,30,30], [33,17,54,45], [4,32,58,84,110,136]],
-		[[28,30,30,30], [35,18,57,48], [4,28,56,84,112,140]],
-		[[28,30,30,30], [37,19,60,51], [4,32,60,88,116,144]],
-		[[28,30,30,30], [38,19,63,53], [4,28,52,76,100,124,148]],
-		[[28,30,30,30], [40,20,66,56], [4,22,48,74,100,126,152]],
-		[[28,30,30,30], [43,21,70,59], [4,26,52,78,104,130,156]],
-		[[28,30,30,30], [45,22,74,62], [4,30,56,82,108,134,160]],
-		[[28,30,30,30], [47,24,77,65], [4,24,52,80,108,136,164]],
-		[[28,30,30,30], [49,25,81,68], [4,28,56,84,112,140,168]]];
+		[[10, 7, 17, 13], [1, 1, 1, 1], []],
+		[[16, 10, 28, 22], [1, 1, 1, 1], [4, 16]],
+		[[26, 15, 22, 18], [1, 1, 2, 2], [4, 20]],
+		[[18, 20, 16, 26], [2, 1, 4, 2], [4, 24]],
+		[[24, 26, 22, 18], [2, 1, 4, 4], [4, 28]],
+		[[16, 18, 28, 24], [4, 2, 4, 4], [4, 32]],
+		[[18, 20, 26, 18], [4, 2, 5, 6], [4, 20, 36]],
+		[[22, 24, 26, 22], [4, 2, 6, 6], [4, 22, 40]],
+		[[22, 30, 24, 20], [5, 2, 8, 8], [4, 24, 44]],
+		[[26, 18, 28, 24], [5, 4, 8, 8], [4, 26, 48]],
+		[[30, 20, 24, 28], [5, 4, 11, 8], [4, 28, 52]],
+		[[22, 24, 28, 26], [8, 4, 11, 10], [4, 30, 56]],
+		[[22, 26, 22, 24], [9, 4, 16, 12], [4, 32, 60]],
+		[[24, 30, 24, 20], [9, 4, 16, 16], [4, 24, 44, 64]],
+		[[24, 22, 24, 30], [10, 6, 18, 12], [4, 24, 46, 68]],
+		[[28, 24, 30, 24], [10, 6, 16, 17], [4, 24, 48, 72]],
+		[[28, 28, 28, 28], [11, 6, 19, 16], [4, 28, 52, 76]],
+		[[26, 30, 28, 28], [13, 6, 21, 18], [4, 28, 54, 80]],
+		[[26, 28, 26, 26], [14, 7, 25, 21], [4, 28, 56, 84]],
+		[[26, 28, 28, 30], [16, 8, 25, 20], [4, 32, 60, 88]],
+		[[26, 28, 30, 28], [17, 8, 25, 23], [4, 26, 48, 70, 92]],
+		[[28, 28, 24, 30], [17, 9, 34, 23], [4, 24, 48, 72, 96]],
+		[[28, 30, 30, 30], [18, 9, 30, 25], [4, 28, 52, 76, 100]],
+		[[28, 30, 30, 30], [20, 10, 32, 27], [4, 26, 52, 78, 104]],
+		[[28, 26, 30, 30], [21, 12, 35, 29], [4, 30, 56, 82, 108]],
+		[[28, 28, 30, 28], [23, 12, 37, 34], [4, 28, 56, 84, 112]],
+		[[28, 30, 30, 30], [25, 12, 40, 34], [4, 32, 60, 88, 116]],
+		[[28, 30, 30, 30], [26, 13, 42, 35], [4, 24, 48, 72, 96, 120]],
+		[[28, 30, 30, 30], [28, 14, 45, 38], [4, 28, 52, 76, 100, 124]],
+		[[28, 30, 30, 30], [29, 15, 48, 40], [4, 24, 50, 76, 102, 128]],
+		[[28, 30, 30, 30], [31, 16, 51, 43], [4, 28, 54, 80, 106, 132]],
+		[[28, 30, 30, 30], [33, 17, 54, 45], [4, 32, 58, 84, 110, 136]],
+		[[28, 30, 30, 30], [35, 18, 57, 48], [4, 28, 56, 84, 112, 140]],
+		[[28, 30, 30, 30], [37, 19, 60, 51], [4, 32, 60, 88, 116, 144]],
+		[[28, 30, 30, 30], [38, 19, 63, 53], [4, 28, 52, 76, 100, 124, 148]],
+		[[28, 30, 30, 30], [40, 20, 66, 56], [4, 22, 48, 74, 100, 126, 152]],
+		[[28, 30, 30, 30], [43, 21, 70, 59], [4, 26, 52, 78, 104, 130, 156]],
+		[[28, 30, 30, 30], [45, 22, 74, 62], [4, 30, 56, 82, 108, 134, 160]],
+		[[28, 30, 30, 30], [47, 24, 77, 65], [4, 24, 52, 80, 108, 136, 164]],
+		[[28, 30, 30, 30], [49, 25, 81, 68], [4, 28, 56, 84, 112, 140, 168]]];
 
 	// mode constants (cf. Table 2 in JIS X 0510:2004 p. 16)
 	var MODE_TERMINATOR = 0;
@@ -2623,7 +3165,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		var prevpoly = GF256_GENPOLY[i], poly = [];
 		for (var j = 0; j <= i; ++j) {
 			var a = (j < i ? GF256_MAP[prevpoly[j]] : 0);
-			var b = GF256_MAP[(i + (prevpoly[j-1] || 0)) % 255];
+			var b = GF256_MAP[(i + (prevpoly[j - 1] || 0)) % 255];
 			poly.push(GF256_INVMAP[a ^ b]);
 		}
 		GF256_GENPOLY.push(poly);
@@ -2637,24 +3179,45 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// mask functions in terms of row # and column #
 	// (cf. Table 20 in JIS X 0510:2004 p. 42)
+	/*jshint unused: false */
 	var MASKFUNCS = [
-		function(i,j) { return (i+j) % 2 === 0; },
-		function(i,j) { return i % 2 === 0; },
-		function(i,j) { return j % 3 === 0; },
-		function(i,j) { return (i+j) % 3 === 0; },
-		function(i,j) { return (((i/2)|0) + ((j/3)|0)) % 2 === 0; },
-		function(i,j) { return (i*j) % 2 + (i*j) % 3 === 0; },
-		function(i,j) { return ((i*j) % 2 + (i*j) % 3) % 2 === 0; },
-		function(i,j) { return ((i+j) % 2 + (i*j) % 3) % 2 === 0; }];
+		function (i, j) {
+			return (i + j) % 2 === 0;
+		},
+		function (i, j) {
+			return i % 2 === 0;
+		},
+		function (i, j) {
+			return j % 3 === 0;
+		},
+		function (i, j) {
+			return (i + j) % 3 === 0;
+		},
+		function (i, j) {
+			return (((i / 2) | 0) + ((j / 3) | 0)) % 2 === 0;
+		},
+		function (i, j) {
+			return (i * j) % 2 + (i * j) % 3 === 0;
+		},
+		function (i, j) {
+			return ((i * j) % 2 + (i * j) % 3) % 2 === 0;
+		},
+		function (i, j) {
+			return ((i + j) % 2 + (i * j) % 3) % 2 === 0;
+		}];
 
 	// returns true when the version information has to be embeded.
-	var needsverinfo = function(ver) { return ver > 6; };
+	var needsverinfo = function (ver) {
+		return ver > 6;
+	};
 
 	// returns the size of entire QR code for given version.
-	var getsizebyver = function(ver) { return 4 * ver + 17; };
+	var getsizebyver = function (ver) {
+		return 4 * ver + 17;
+	};
 
 	// returns the number of bits available for code words in this version.
-	var nfullbits = function(ver) {
+	var nfullbits = function (ver) {
 		/*
 		 * |<--------------- n --------------->|
 		 * |        |<----- n-17 ---->|        |
@@ -2689,8 +3252,9 @@ return /******/ (function(modules) { // webpackBootstrap
 		 *   timing patterns.
 		 */
 		var v = VERSIONS[ver];
-		var nbits = 16*ver*ver + 128*ver + 64; // finder, timing and format info.
-		if (needsverinfo(ver)) nbits -= 36; // version information
+		var nbits = 16 * ver * ver + 128 * ver + 64; // finder, timing and format info.
+		if (needsverinfo(ver))
+			nbits -= 36; // version information
 		if (v[2].length) { // alignment patterns
 			nbits -= 25 * v[2].length * v[2].length - 10 * v[2].length - 55;
 		}
@@ -2699,7 +3263,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// returns the number of bits available for data portions (i.e. excludes ECC
 	// bits but includes mode and length bits) in this version and ECC level.
-	var ndatabits = function(ver, ecclevel) {
+	var ndatabits = function (ver, ecclevel) {
 		var nbits = nfullbits(ver) & ~7; // no sub-octet code words
 		var v = VERSIONS[ver];
 		nbits -= 8 * v[0][ecclevel] * v[1][ecclevel]; // ecc bits
@@ -2708,27 +3272,31 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// returns the number of bits required for the length of data.
 	// (cf. Table 3 in JIS X 0510:2004 p. 16)
-	var ndatalenbits = function(ver, mode) {
+	var ndatalenbits = function (ver, mode) {
 		switch (mode) {
-		case MODE_NUMERIC: return (ver < 10 ? 10 : ver < 27 ? 12 : 14);
-		case MODE_ALPHANUMERIC: return (ver < 10 ? 9 : ver < 27 ? 11 : 13);
-		case MODE_OCTET: return (ver < 10 ? 8 : 16);
-		case MODE_KANJI: return (ver < 10 ? 8 : ver < 27 ? 10 : 12);
+			case MODE_NUMERIC:
+				return (ver < 10 ? 10 : ver < 27 ? 12 : 14);
+			case MODE_ALPHANUMERIC:
+				return (ver < 10 ? 9 : ver < 27 ? 11 : 13);
+			case MODE_OCTET:
+				return (ver < 10 ? 8 : 16);
+			case MODE_KANJI:
+				return (ver < 10 ? 8 : ver < 27 ? 10 : 12);
 		}
 	};
 
 	// returns the maximum length of data possible in given configuration.
-	var getmaxdatalen = function(ver, mode, ecclevel) {
+	var getmaxdatalen = function (ver, mode, ecclevel) {
 		var nbits = ndatabits(ver, ecclevel) - 4 - ndatalenbits(ver, mode); // 4 for mode bits
 		switch (mode) {
-		case MODE_NUMERIC:
-			return ((nbits/10) | 0) * 3 + (nbits%10 < 4 ? 0 : nbits%10 < 7 ? 1 : 2);
-		case MODE_ALPHANUMERIC:
-			return ((nbits/11) | 0) * 2 + (nbits%11 < 6 ? 0 : 1);
-		case MODE_OCTET:
-			return (nbits/8) | 0;
-		case MODE_KANJI:
-			return (nbits/13) | 0;
+			case MODE_NUMERIC:
+				return ((nbits / 10) | 0) * 3 + (nbits % 10 < 4 ? 0 : nbits % 10 < 7 ? 1 : 2);
+			case MODE_ALPHANUMERIC:
+				return ((nbits / 11) | 0) * 2 + (nbits % 11 < 6 ? 0 : 1);
+			case MODE_OCTET:
+				return (nbits / 8) | 0;
+			case MODE_KANJI:
+				return (nbits / 13) | 0;
 		}
 	};
 
@@ -2738,61 +3306,65 @@ return /******/ (function(modules) { // webpackBootstrap
 	//
 	// this function does not check the length of data; it is a duty of
 	// encode function below (as it depends on the version and ECC level too).
-	var validatedata = function(mode, data) {
+	var validatedata = function (mode, data) {
 		switch (mode) {
-		case MODE_NUMERIC:
-			if (!data.match(NUMERIC_REGEXP)) return null;
-			return data;
-
-		case MODE_ALPHANUMERIC:
-			if (!data.match(ALPHANUMERIC_REGEXP)) return null;
-			return data.toUpperCase();
-
-		case MODE_OCTET:
-			if (typeof data === 'string') { // encode as utf-8 string
-				var newdata = [];
-				for (var i = 0; i < data.length; ++i) {
-					var ch = data.charCodeAt(i);
-					if (ch < 0x80) {
-						newdata.push(ch);
-					} else if (ch < 0x800) {
-						newdata.push(0xc0 | (ch >> 6),
-							0x80 | (ch & 0x3f));
-					} else if (ch < 0x10000) {
-						newdata.push(0xe0 | (ch >> 12),
-							0x80 | ((ch >> 6) & 0x3f),
-							0x80 | (ch & 0x3f));
-					} else {
-						newdata.push(0xf0 | (ch >> 18),
-							0x80 | ((ch >> 12) & 0x3f),
-							0x80 | ((ch >> 6) & 0x3f),
-							0x80 | (ch & 0x3f));
-					}
-				}
-				return newdata;
-			} else {
+			case MODE_NUMERIC:
+				if (!data.match(NUMERIC_REGEXP))
+					return null;
 				return data;
-			}
+
+			case MODE_ALPHANUMERIC:
+				if (!data.match(ALPHANUMERIC_REGEXP))
+					return null;
+				return data.toUpperCase();
+
+			case MODE_OCTET:
+				if (typeof data === 'string') { // encode as utf-8 string
+					var newdata = [];
+					for (var i = 0; i < data.length; ++i) {
+						var ch = data.charCodeAt(i);
+						if (ch < 0x80) {
+							newdata.push(ch);
+						} else if (ch < 0x800) {
+							newdata.push(0xc0 | (ch >> 6),
+								0x80 | (ch & 0x3f));
+						} else if (ch < 0x10000) {
+							newdata.push(0xe0 | (ch >> 12),
+								0x80 | ((ch >> 6) & 0x3f),
+								0x80 | (ch & 0x3f));
+						} else {
+							newdata.push(0xf0 | (ch >> 18),
+								0x80 | ((ch >> 12) & 0x3f),
+								0x80 | ((ch >> 6) & 0x3f),
+								0x80 | (ch & 0x3f));
+						}
+					}
+					return newdata;
+				} else {
+					return data;
+				}
 		}
 	};
 
 	// returns the code words (sans ECC bits) for given data and configurations.
 	// requires data to be preprocessed by validatedata. no length check is
 	// performed, and everything has to be checked before calling this function.
-	var encode = function(ver, mode, data, maxbuflen) {
+	var encode = function (ver, mode, data, maxbuflen) {
 		var buf = [];
 		var bits = 0, remaining = 8;
 		var datalen = data.length;
 
 		// this function is intentionally no-op when n=0.
-		var pack = function(x, n) {
+		var pack = function (x, n) {
 			if (n >= remaining) {
 				buf.push(bits | (x >> (n -= remaining)));
-				while (n >= 8) buf.push((x >> (n -= 8)) & 255);
+				while (n >= 8)
+					buf.push((x >> (n -= 8)) & 255);
 				bits = 0;
 				remaining = 8;
 			}
-			if (n > 0) bits |= (x & ((1 << n) - 1)) << (remaining -= n);
+			if (n > 0)
+				bits |= (x & ((1 << n) - 1)) << (remaining -= n);
 		};
 
 		var nlenbits = ndatalenbits(ver, mode);
@@ -2800,28 +3372,28 @@ return /******/ (function(modules) { // webpackBootstrap
 		pack(datalen, nlenbits);
 
 		switch (mode) {
-		case MODE_NUMERIC:
-			for (var i = 2; i < datalen; i += 3) {
-				pack(parseInt(data.substring(i-2,i+1), 10), 10);
-			}
-			pack(parseInt(data.substring(i-2), 10), [0,4,7][datalen%3]);
-			break;
+			case MODE_NUMERIC:
+				for (var i = 2; i < datalen; i += 3) {
+					pack(parseInt(data.substring(i - 2, i + 1), 10), 10);
+				}
+				pack(parseInt(data.substring(i - 2), 10), [0, 4, 7][datalen % 3]);
+				break;
 
-		case MODE_ALPHANUMERIC:
-			for (var i = 1; i < datalen; i += 2) {
-				pack(ALPHANUMERIC_MAP[data.charAt(i-1)] * 45 +
-					ALPHANUMERIC_MAP[data.charAt(i)], 11);
-			}
-			if (datalen % 2 == 1) {
-				pack(ALPHANUMERIC_MAP[data.charAt(i-1)], 6);
-			}
-			break;
+			case MODE_ALPHANUMERIC:
+				for (var i = 1; i < datalen; i += 2) {
+					pack(ALPHANUMERIC_MAP[data.charAt(i - 1)] * 45 +
+						ALPHANUMERIC_MAP[data.charAt(i)], 11);
+				}
+				if (datalen % 2 == 1) {
+					pack(ALPHANUMERIC_MAP[data.charAt(i - 1)], 6);
+				}
+				break;
 
-		case MODE_OCTET:
-			for (var i = 0; i < datalen; ++i) {
-				pack(data[i], 8);
-			}
-			break;
+			case MODE_OCTET:
+				for (var i = 0; i < datalen; ++i) {
+					pack(data[i], 8);
+				}
+				break;
 		}
 
 		// final bits. it is possible that adding terminator causes the buffer
@@ -2829,12 +3401,15 @@ return /******/ (function(modules) { // webpackBootstrap
 		// be valid as the truncated terminator mode bits and padding is
 		// identical in appearance (cf. JIS X 0510:2004 sec 8.4.8).
 		pack(MODE_TERMINATOR, 4);
-		if (remaining < 8) buf.push(bits);
+		if (remaining < 8)
+			buf.push(bits);
 
 		// the padding to fill up the remaining space. we should not add any
 		// words when the overflow already occurred.
-		while (buf.length + 1 < maxbuflen) buf.push(0xec, 0x11);
-		if (buf.length < maxbuflen) buf.push(0xec);
+		while (buf.length + 1 < maxbuflen)
+			buf.push(0xec, 0x11);
+		if (buf.length < maxbuflen)
+			buf.push(0xec);
 		return buf;
 	};
 
@@ -2845,15 +3420,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	// zero-augumented polynomial by the generator polynomial. the only difference
 	// is that Reed-Solomon uses GF(2^8), instead of CRC's GF(2), and Reed-Solomon
 	// uses the different generator polynomial than CRC's.
-	var calculateecc = function(poly, genpoly) {
+	var calculateecc = function (poly, genpoly) {
 		var modulus = poly.slice(0);
 		var polylen = poly.length, genpolylen = genpoly.length;
-		for (var i = 0; i < genpolylen; ++i) modulus.push(0);
+		for (var i = 0; i < genpolylen; ++i)
+			modulus.push(0);
 		for (var i = 0; i < polylen; ) {
 			var quotient = GF256_INVMAP[modulus[i++]];
 			if (quotient >= 0) {
 				for (var j = 0; j < genpolylen; ++j) {
-					modulus[i+j] ^= GF256_MAP[(quotient + genpoly[j]) % 255];
+					modulus[i + j] ^= GF256_MAP[(quotient + genpoly[j]) % 255];
 				}
 			}
 		}
@@ -2867,7 +3443,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	// the code is simplified using the fact that the size of each code & ECC
 	// blocks is almost same; for example, when we have 4 blocks and 46 data words
 	// the number of code words in those blocks are 11, 11, 12, 12 respectively.
-	var augumenteccs = function(poly, nblocks, genpoly) {
+	var augumenteccs = function (poly, nblocks, genpoly) {
 		var subsizes = [];
 		var subsize = (poly.length / nblocks) | 0, subsize0 = 0;
 		var pivot = nblocks - poly.length % nblocks;
@@ -2877,13 +3453,13 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 		for (var i = pivot; i < nblocks; ++i) {
 			subsizes.push(subsize0);
-			subsize0 += subsize+1;
+			subsize0 += subsize + 1;
 		}
 		subsizes.push(subsize0);
 
 		var eccs = [];
 		for (var i = 0; i < nblocks; ++i) {
-			eccs.push(calculateecc(poly.slice(subsizes[i], subsizes[i+1]), genpoly));
+			eccs.push(calculateecc(poly.slice(subsizes[i], subsizes[i + 1]), genpoly));
 		}
 
 		var result = [];
@@ -2894,7 +3470,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 		}
 		for (var j = pivot; j < nblocks; ++j) {
-			result.push(poly[subsizes[j+1] - 1]);
+			result.push(poly[subsizes[j + 1] - 1]);
 		}
 		for (var i = 0; i < genpoly.length; ++i) {
 			for (var j = 0; j < nblocks; ++j) {
@@ -2911,10 +3487,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	// actual polynomials used for this procedure are as follows:
 	// - p=10, q=5, genpoly=x^10+x^8+x^5+x^4+x^2+x+1 (JIS X 0510:2004 Appendix C)
 	// - p=18, q=6, genpoly=x^12+x^11+x^10+x^9+x^8+x^5+x^2+1 (ibid. Appendix D)
-	var augumentbch = function(poly, p, genpoly, q) {
+	var augumentbch = function (poly, p, genpoly, q) {
 		var modulus = poly << q;
 		for (var i = p - 1; i >= 0; --i) {
-			if ((modulus >> (q+i)) & 1) modulus ^= genpoly << i;
+			if ((modulus >> (q + i)) & 1)
+				modulus ^= genpoly << i;
 		}
 		return (poly << q) | modulus;
 	};
@@ -2926,7 +3503,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	// some entries in the matrix may be undefined, rather than 0 or 1. this is
 	// intentional (no initialization needed!), and putdata below will fill
 	// the remaining ones.
-	var makebasematrix = function(ver) {
+	var makebasematrix = function (ver) {
 		var v = VERSIONS[ver], n = getsizebyver(ver);
 		var matrix = [], reserved = [];
 		for (var i = 0; i < n; ++i) {
@@ -2934,11 +3511,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			reserved.push([]);
 		}
 
-		var blit = function(y, x, h, w, bits) {
+		var blit = function (y, x, h, w, bits) {
 			for (var i = 0; i < h; ++i) {
 				for (var j = 0; j < w; ++j) {
-					matrix[y+i][x+j] = (bits[i] >> j) & 1;
-					reserved[y+i][x+j] = 1;
+					matrix[y + i][x + j] = (bits[i] >> j) & 1;
+					reserved[y + i][x + j] = 1;
 				}
 			}
 		};
@@ -2946,11 +3523,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		// finder patterns and a part of timing patterns
 		// will also mark the format information area (not yet written) as reserved.
 		blit(0, 0, 9, 9, [0x7f, 0x41, 0x5d, 0x5d, 0x5d, 0x41, 0x17f, 0x00, 0x40]);
-		blit(n-8, 0, 8, 9, [0x100, 0x7f, 0x41, 0x5d, 0x5d, 0x5d, 0x41, 0x7f]);
-		blit(0, n-8, 9, 8, [0xfe, 0x82, 0xba, 0xba, 0xba, 0x82, 0xfe, 0x00, 0x00]);
+		blit(n - 8, 0, 8, 9, [0x100, 0x7f, 0x41, 0x5d, 0x5d, 0x5d, 0x41, 0x7f]);
+		blit(0, n - 8, 9, 8, [0xfe, 0x82, 0xba, 0xba, 0xba, 0x82, 0xfe, 0x00, 0x00]);
 
 		// the rest of timing patterns
-		for (var i = 9; i < n-8; ++i) {
+		for (var i = 9; i < n - 8; ++i) {
 			matrix[6][i] = matrix[i][6] = ~i & 1;
 			reserved[6][i] = reserved[i][6] = 1;
 		}
@@ -2958,7 +3535,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		// alignment patterns
 		var aligns = v[2], m = aligns.length;
 		for (var i = 0; i < m; ++i) {
-			var minj = (i===0 || i===m-1 ? 1 : 0), maxj = (i===0 ? m-1 : m);
+			var minj = (i === 0 || i === m - 1 ? 1 : 0), maxj = (i === 0 ? m - 1 : m);
 			for (var j = minj; j < maxj; ++j) {
 				blit(aligns[i], aligns[j], 5, 5, [0x1f, 0x11, 0x15, 0x11, 0x1f]);
 			}
@@ -2970,8 +3547,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			var k = 0;
 			for (var i = 0; i < 6; ++i) {
 				for (var j = 0; j < 3; ++j) {
-					matrix[i][(n-11)+j] = matrix[(n-11)+j][i] = (code >> k++) & 1;
-					reserved[i][(n-11)+j] = reserved[(n-11)+j][i] = 1;
+					matrix[i][(n - 11) + j] = matrix[(n - 11) + j][i] = (code >> k++) & 1;
+					reserved[i][(n - 11) + j] = reserved[(n - 11) + j][i] = 1;
 				}
 			}
 		}
@@ -2982,18 +3559,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	// fills the data portion (i.e. unmarked in reserved) of the matrix with given
 	// code words. the size of code words should be no more than available bits,
 	// and remaining bits are padded to 0 (cf. JIS X 0510:2004 sec 8.7.3).
-	var putdata = function(matrix, reserved, buf) {
+	var putdata = function (matrix, reserved, buf) {
 		var n = matrix.length;
 		var k = 0, dir = -1;
-		for (var i = n-1; i >= 0; i -= 2) {
-			if (i == 6) --i; // skip the entire timing pattern column
-			var jj = (dir < 0 ? n-1 : 0);
+		for (var i = n - 1; i >= 0; i -= 2) {
+			if (i == 6)
+				--i; // skip the entire timing pattern column
+			var jj = (dir < 0 ? n - 1 : 0);
 			for (var j = 0; j < n; ++j) {
-				for (var ii = i; ii > i-2; --ii) {
+				for (var ii = i; ii > i - 2; --ii) {
 					if (!reserved[jj][ii]) {
 						// may overflow, but (undefined >> x)
 						// is 0 so it will auto-pad to zero.
-						matrix[jj][ii] = (buf[k >> 3] >> (~k&7)) & 1;
+						matrix[jj][ii] = (buf[k >> 3] >> (~k & 7)) & 1;
 						++k;
 					}
 				}
@@ -3006,24 +3584,25 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// XOR-masks the data portion of the matrix. repeating the call with the same
 	// arguments will revert the prior call (convenient in the matrix evaluation).
-	var maskdata = function(matrix, reserved, mask) {
+	var maskdata = function (matrix, reserved, mask) {
 		var maskf = MASKFUNCS[mask];
 		var n = matrix.length;
 		for (var i = 0; i < n; ++i) {
 			for (var j = 0; j < n; ++j) {
-				if (!reserved[i][j]) matrix[i][j] ^= maskf(i,j);
+				if (!reserved[i][j])
+					matrix[i][j] ^= maskf(i, j);
 			}
 		}
 		return matrix;
 	};
 
 	// puts the format information.
-	var putformatinfo = function(matrix, reserved, ecclevel, mask) {
+	var putformatinfo = function (matrix, reserved, ecclevel, mask) {
 		var n = matrix.length;
 		var code = augumentbch((ecclevel << 3) | mask, 5, 0x537, 10) ^ 0x5412;
 		for (var i = 0; i < 15; ++i) {
-			var r = [0,1,2,3,4,5,7,8,n-7,n-6,n-5,n-4,n-3,n-2,n-1][i];
-			var c = [n-1,n-2,n-3,n-4,n-5,n-6,n-7,n-8,7,5,4,3,2,1,0][i];
+			var r = [0, 1, 2, 3, 4, 5, 7, 8, n - 7, n - 6, n - 5, n - 4, n - 3, n - 2, n - 1][i];
+			var c = [n - 1, n - 2, n - 3, n - 4, n - 5, n - 6, n - 7, n - 8, 7, 5, 4, 3, 2, 1, 0][i];
 			matrix[r][8] = matrix[8][c] = (code >> i) & 1;
 			// we don't have to mark those bits reserved; always done
 			// in makebasematrix above.
@@ -3041,7 +3620,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	//
 	// note: zxing seems to use the same procedure and in many cases its choice
 	// agrees to ours, but sometimes it does not. practically it doesn't matter.
-	var evaluatematrix = function(matrix) {
+	var evaluatematrix = function (matrix) {
 		// N1+(k-5) points for each consecutive row of k same-colored modules,
 		// where k >= 5. no overlapping row counts.
 		var PENALTY_CONSECUTIVE = 3;
@@ -3056,15 +3635,16 @@ return /******/ (function(modules) { // webpackBootstrap
 		// i.e. k=1 for 55~60% and 40~45%, k=2 for 60~65% and 35~40%, etc.
 		var PENALTY_DENSITY = 10;
 
-		var evaluategroup = function(groups) { // assumes [W,B,W,B,W,...,B,W]
+		var evaluategroup = function (groups) { // assumes [W,B,W,B,W,...,B,W]
 			var score = 0;
 			for (var i = 0; i < groups.length; ++i) {
-				if (groups[i] >= 5) score += PENALTY_CONSECUTIVE + (groups[i]-5);
+				if (groups[i] >= 5)
+					score += PENALTY_CONSECUTIVE + (groups[i] - 5);
 			}
 			for (var i = 5; i < groups.length; i += 2) {
 				var p = groups[i];
-				if (groups[i-1] == p && groups[i-2] == 3*p && groups[i-3] == p &&
-						groups[i-4] == p && (groups[i-5] >= 4*p || groups[i+1] >= 4*p)) {
+				if (groups[i - 1] == p && groups[i - 2] == 3 * p && groups[i - 3] == p &&
+					groups[i - 4] == p && (groups[i - 5] >= 4 * p || groups[i + 1] >= 4 * p)) {
 					// this part differs from zxing...
 					score += PENALTY_FINDERLIKE;
 				}
@@ -3082,9 +3662,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			groups = [0]; // the first empty group of white
 			for (var j = 0; j < n; ) {
 				var k;
-				for (k = 0; j < n && row[j]; ++k) ++j;
+				for (k = 0; j < n && row[j]; ++k)
+					++j;
 				groups.push(k);
-				for (k = 0; j < n && !row[j]; ++k) ++j;
+				for (k = 0; j < n && !row[j]; ++k)
+					++j;
 				groups.push(k);
 			}
 			score += evaluategroup(groups);
@@ -3093,21 +3675,23 @@ return /******/ (function(modules) { // webpackBootstrap
 			groups = [0];
 			for (var j = 0; j < n; ) {
 				var k;
-				for (k = 0; j < n && matrix[j][i]; ++k) ++j;
+				for (k = 0; j < n && matrix[j][i]; ++k)
+					++j;
 				groups.push(k);
-				for (k = 0; j < n && !matrix[j][i]; ++k) ++j;
+				for (k = 0; j < n && !matrix[j][i]; ++k)
+					++j;
 				groups.push(k);
 			}
 			score += evaluategroup(groups);
 
 			// check the 2x2 box and calculate the density
-			var nextrow = matrix[i+1] || [];
+			var nextrow = matrix[i + 1] || [];
 			nblacks += row[0];
 			for (var j = 1; j < n; ++j) {
 				var p = row[j];
 				nblacks += p;
 				// at least comparison with next row should be strict...
-				if (row[j-1] == p && nextrow[j] === p && nextrow[j-1] === p) {
+				if (row[j - 1] == p && nextrow[j] === p && nextrow[j - 1] === p) {
 					score += PENALTY_TWOBYTWO;
 				}
 			}
@@ -3119,7 +3703,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// returns the fully encoded QR code matrix which contains given data.
 	// it also chooses the best mask automatically when mask is -1.
-	var generate = function(data, ver, mode, ecclevel, mask) {
+	var generate = function (data, ver, mode, ecclevel, mask) {
 		var v = VERSIONS[ver];
 		var buf = encode(ver, mode, data, ndatabits(ver, ecclevel) >> 3);
 		buf = augumenteccs(buf, v[1][ecclevel], GF256_GENPOLY[v[0][ecclevel]]);
@@ -3163,53 +3747,58 @@ return /******/ (function(modules) { // webpackBootstrap
 	//
 
 	function generateFrame(data, options) {
-			var MODES = {'numeric': MODE_NUMERIC, 'alphanumeric': MODE_ALPHANUMERIC,
-				'octet': MODE_OCTET};
-			var ECCLEVELS = {'L': ECCLEVEL_L, 'M': ECCLEVEL_M, 'Q': ECCLEVEL_Q,
-				'H': ECCLEVEL_H};
+		var MODES = {'numeric': MODE_NUMERIC, 'alphanumeric': MODE_ALPHANUMERIC,
+			'octet': MODE_OCTET};
+		var ECCLEVELS = {'L': ECCLEVEL_L, 'M': ECCLEVEL_M, 'Q': ECCLEVEL_Q,
+			'H': ECCLEVEL_H};
 
-			options = options || {};
-			var ver = options.version || -1;
-			var ecclevel = ECCLEVELS[(options.eccLevel || 'L').toUpperCase()];
-			var mode = options.mode ? MODES[options.mode.toLowerCase()] : -1;
-			var mask = 'mask' in options ? options.mask : -1;
+		options = options || {};
+		var ver = options.version || -1;
+		var ecclevel = ECCLEVELS[(options.eccLevel || 'L').toUpperCase()];
+		var mode = options.mode ? MODES[options.mode.toLowerCase()] : -1;
+		var mask = 'mask' in options ? options.mask : -1;
 
-			if (mode < 0) {
-				if (typeof data === 'string') {
-					if (data.match(NUMERIC_REGEXP)) {
-						mode = MODE_NUMERIC;
-					} else if (data.match(ALPHANUMERIC_OUT_REGEXP)) {
-						// while encode supports case-insensitive encoding, we restrict the data to be uppercased when auto-selecting the mode.
-						mode = MODE_ALPHANUMERIC;
-					} else {
-						mode = MODE_OCTET;
-					}
+		if (mode < 0) {
+			if (typeof data === 'string') {
+				if (data.match(NUMERIC_REGEXP)) {
+					mode = MODE_NUMERIC;
+				} else if (data.match(ALPHANUMERIC_OUT_REGEXP)) {
+					// while encode supports case-insensitive encoding, we restrict the data to be uppercased when auto-selecting the mode.
+					mode = MODE_ALPHANUMERIC;
 				} else {
 					mode = MODE_OCTET;
 				}
-			} else if (!(mode == MODE_NUMERIC || mode == MODE_ALPHANUMERIC ||
-					mode == MODE_OCTET)) {
-				throw 'invalid or unsupported mode';
+			} else {
+				mode = MODE_OCTET;
 			}
-
-			data = validatedata(mode, data);
-			if (data === null) throw 'invalid data format';
-
-			if (ecclevel < 0 || ecclevel > 3) throw 'invalid ECC level';
-
-			if (ver < 0) {
-				for (ver = 1; ver <= 40; ++ver) {
-					if (data.length <= getmaxdatalen(ver, mode, ecclevel)) break;
-				}
-				if (ver > 40) throw 'too large data for the Qr format';
-			} else if (ver < 1 || ver > 40) {
-				throw 'invalid Qr version! should be between 1 and 40';
-			}
-
-			if (mask != -1 && (mask < 0 || mask > 8)) throw 'invalid mask';
-	        //console.log('version:', ver, 'mode:', mode, 'ECC:', ecclevel, 'mask:', mask )
-			return generate(data, ver, mode, ecclevel, mask);
+		} else if (!(mode == MODE_NUMERIC || mode == MODE_ALPHANUMERIC ||
+			mode == MODE_OCTET)) {
+			throw 'invalid or unsupported mode';
 		}
+
+		data = validatedata(mode, data);
+		if (data === null)
+			throw 'invalid data format';
+
+		if (ecclevel < 0 || ecclevel > 3)
+			throw 'invalid ECC level';
+
+		if (ver < 0) {
+			for (ver = 1; ver <= 40; ++ver) {
+				if (data.length <= getmaxdatalen(ver, mode, ecclevel))
+					break;
+			}
+			if (ver > 40)
+				throw 'too large data for the Qr format';
+		} else if (ver < 1 || ver > 40) {
+			throw 'invalid Qr version! should be between 1 and 40';
+		}
+
+		if (mask != -1 && (mask < 0 || mask > 8))
+			throw 'invalid mask';
+		//console.log('version:', ver, 'mode:', mode, 'ECC:', ecclevel, 'mask:', mask )
+		return generate(data, ver, mode, ecclevel, mask);
+	}
 
 
 	// options
@@ -3220,68 +3809,68 @@ return /******/ (function(modules) { // webpackBootstrap
 	//   modules, so it is better not to alter this value unless you know what
 	//   you're doing.
 	function buildCanvas(data, options) {
-	   
-	    var canvas = [];
-	    var background = data.background || '#fff';
-	    var foreground = data.foreground || '#000';
-	    //var margin = options.margin || 4;
+
+		var canvas = [];
+		var background = data.background || '#fff';
+		var foreground = data.foreground || '#000';
+		//var margin = options.margin || 4;
 		var matrix = generateFrame(data, options);
 		var n = matrix.length;
-		var modSize = Math.floor( options.fit ? options.fit/n : 5 );
+		var modSize = Math.floor(options.fit ? options.fit / n : 5);
 		var size = n * modSize;
-		
-	    canvas.push({
-	      type: 'rect',
-	      x: 0, y: 0, w: size, h: size, lineWidth: 0, color: background
-	    });
-	    
+
+		canvas.push({
+			type: 'rect',
+			x: 0, y: 0, w: size, h: size, lineWidth: 0, color: background
+		});
+
 		for (var i = 0; i < n; ++i) {
 			for (var j = 0; j < n; ++j) {
-	            if(matrix[i][j]) {
-	              canvas.push({
-	                type: 'rect',
-	                x: modSize * i,
-	                y: modSize * j,
-	                w: modSize,
-	                h: modSize,
-	                lineWidth: 0,
-	                color: foreground
-	              });
-	            }
-	        }
-	    }
-	    
-	    return {
-	        canvas: canvas,
-	        size: size
-	    };
-			
+				if (matrix[i][j]) {
+					canvas.push({
+						type: 'rect',
+						x: modSize * j,
+						y: modSize * i,
+						w: modSize,
+						h: modSize,
+						lineWidth: 0,
+						color: foreground
+					});
+				}
+			}
+		}
+
+		return {
+			canvas: canvas,
+			size: size
+		};
+
 	}
 
 	function measure(node) {
-	    var cd = buildCanvas(node.qr, node);
-	    node._canvas = cd.canvas;
-	    node._width = node._height = node._minWidth = node._maxWidth = node._minHeight = node._maxHeight = cd.size;
-	    return node;
+		var cd = buildCanvas(node.qr, node);
+		node._canvas = cd.canvas;
+		node._width = node._height = node._minWidth = node._maxWidth = node._minHeight = node._maxHeight = cd.size;
+		return node;
 	}
 
 	module.exports = {
-	  measure: measure
+		measure: measure
 	};
 
 /***/ },
-/* 13 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var TraversalTracker = __webpack_require__(6);
+	var TraversalTracker = __webpack_require__(5);
 
 	/**
-	* Creates an instance of DocumentContext - a store for current x, y positions and available width/height.
-	* It facilitates column divisions and vertical sync
-	*/
+	 * Creates an instance of DocumentContext - a store for current x, y positions and available width/height.
+	 * It facilitates column divisions and vertical sync
+	 */
 	function DocumentContext(pageSize, pageMargins) {
 		this.pages = [];
 
@@ -3296,19 +3885,19 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		this.endingCell = null;
 
-	  this.tracker = new TraversalTracker();
+		this.tracker = new TraversalTracker();
 
 		this.addPage(pageSize);
 	}
 
-	DocumentContext.prototype.beginColumnGroup = function() {
+	DocumentContext.prototype.beginColumnGroup = function () {
 		this.snapshots.push({
 			x: this.x,
 			y: this.y,
 			availableHeight: this.availableHeight,
 			availableWidth: this.availableWidth,
 			page: this.page,
-			bottomMost: { y: this.y, page: this.page },
+			bottomMost: {y: this.y, page: this.page},
 			endingCell: this.endingCell,
 			lastColumnWidth: this.lastColumnWidth
 		});
@@ -3316,12 +3905,12 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.lastColumnWidth = 0;
 	};
 
-	DocumentContext.prototype.beginColumn = function(width, offset, endingCell) {
+	DocumentContext.prototype.beginColumn = function (width, offset, endingCell) {
 		var saved = this.snapshots[this.snapshots.length - 1];
 
 		this.calculateBottomMost(saved);
 
-	  this.endingCell = endingCell;
+		this.endingCell = endingCell;
 		this.page = saved.page;
 		this.x = this.x + this.lastColumnWidth + (offset || 0);
 		this.y = saved.y;
@@ -3331,7 +3920,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.lastColumnWidth = width;
 	};
 
-	DocumentContext.prototype.calculateBottomMost = function(destContext) {
+	DocumentContext.prototype.calculateBottomMost = function (destContext) {
 		if (this.endingCell) {
 			this.saveContextInEndingCell(this.endingCell);
 			this.endingCell = null;
@@ -3340,7 +3929,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	DocumentContext.prototype.markEnding = function(endingCell) {
+	DocumentContext.prototype.markEnding = function (endingCell) {
 		this.page = endingCell._columnEndingContext.page;
 		this.x = endingCell._columnEndingContext.x;
 		this.y = endingCell._columnEndingContext.y;
@@ -3349,7 +3938,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.lastColumnWidth = endingCell._columnEndingContext.lastColumnWidth;
 	};
 
-	DocumentContext.prototype.saveContextInEndingCell = function(endingCell) {
+	DocumentContext.prototype.saveContextInEndingCell = function (endingCell) {
 		endingCell._columnEndingContext = {
 			page: this.page,
 			x: this.x,
@@ -3360,7 +3949,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		};
 	};
 
-	DocumentContext.prototype.completeColumnGroup = function() {
+	DocumentContext.prototype.completeColumnGroup = function () {
 		var saved = this.snapshots.pop();
 
 		this.calculateBottomMost(saved);
@@ -3374,44 +3963,44 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.lastColumnWidth = saved.lastColumnWidth;
 	};
 
-	DocumentContext.prototype.addMargin = function(left, right) {
+	DocumentContext.prototype.addMargin = function (left, right) {
 		this.x += left;
 		this.availableWidth -= left + (right || 0);
 	};
 
-	DocumentContext.prototype.moveDown = function(offset) {
+	DocumentContext.prototype.moveDown = function (offset) {
 		this.y += offset;
 		this.availableHeight -= offset;
 
 		return this.availableHeight > 0;
 	};
 
-	DocumentContext.prototype.initializePage = function() {
+	DocumentContext.prototype.initializePage = function () {
 		this.y = this.pageMargins.top;
 		this.availableHeight = this.getCurrentPage().pageSize.height - this.pageMargins.top - this.pageMargins.bottom;
 		this.pageSnapshot().availableWidth = this.getCurrentPage().pageSize.width - this.pageMargins.left - this.pageMargins.right;
 	};
 
-	DocumentContext.prototype.pageSnapshot = function(){
-	  if(this.snapshots[0]){
-	    return this.snapshots[0];
-	  } else {
-	    return this;
-	  }
+	DocumentContext.prototype.pageSnapshot = function () {
+		if (this.snapshots[0]) {
+			return this.snapshots[0];
+		} else {
+			return this;
+		}
 	};
 
-	DocumentContext.prototype.moveTo = function(x,y) {
-		if(x !== undefined && x !== null) {
+	DocumentContext.prototype.moveTo = function (x, y) {
+		if (x !== undefined && x !== null) {
 			this.x = x;
 			this.availableWidth = this.getCurrentPage().pageSize.width - this.x - this.pageMargins.right;
 		}
-		if(y !== undefined && y !== null){
+		if (y !== undefined && y !== null) {
 			this.y = y;
 			this.availableHeight = this.getCurrentPage().pageSize.height - this.y - this.pageMargins.bottom;
 		}
 	};
 
-	DocumentContext.prototype.beginDetachedBlock = function() {
+	DocumentContext.prototype.beginDetachedBlock = function () {
 		this.snapshots.push({
 			x: this.x,
 			y: this.y,
@@ -3423,7 +4012,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		});
 	};
 
-	DocumentContext.prototype.endDetachedBlock = function() {
+	DocumentContext.prototype.endDetachedBlock = function () {
 		var saved = this.snapshots.pop();
 
 		this.x = saved.x;
@@ -3435,10 +4024,10 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.lastColumnWidth = saved.lastColumnWidth;
 	};
 
-	function pageOrientation(pageOrientationString, currentPageOrientation){
-		if(pageOrientationString === undefined) {
+	function pageOrientation(pageOrientationString, currentPageOrientation) {
+		if (pageOrientationString === undefined) {
 			return currentPageOrientation;
-		} else if(pageOrientationString === 'landscape'){
+		} else if (pageOrientationString === 'landscape') {
 			return 'landscape';
 		} else {
 			return 'portrait';
@@ -3449,7 +4038,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		newPageOrientation = pageOrientation(newPageOrientation, currentPage.pageSize.orientation);
 
-		if(newPageOrientation !== currentPage.pageSize.orientation) {
+		if (newPageOrientation !== currentPage.pageSize.orientation) {
 			return {
 				orientation: newPageOrientation,
 				width: currentPage.pageSize.height,
@@ -3466,7 +4055,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 
-	DocumentContext.prototype.moveToNextPage = function(pageOrientation) {
+	DocumentContext.prototype.moveToNextPage = function (pageOrientation) {
 		var nextPageIndex = this.page + 1;
 
 		var prevPage = this.page;
@@ -3474,13 +4063,21 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		var createNewPage = nextPageIndex >= this.pages.length;
 		if (createNewPage) {
-			this.addPage(getPageSize(this.getCurrentPage(), pageOrientation));
+			var currentAvailableWidth = this.availableWidth;
+			var currentPageOrientation = this.getCurrentPage().pageSize.orientation;
+
+			var pageSize = getPageSize(this.getCurrentPage(), pageOrientation);
+			this.addPage(pageSize);
+
+			if (currentPageOrientation === pageSize.orientation) {
+				this.availableWidth = currentAvailableWidth;
+			}
 		} else {
 			this.page = nextPageIndex;
 			this.initializePage();
 		}
 
-	  return {
+		return {
 			newPageCreated: createNewPage,
 			prevPage: prevPage,
 			prevY: prevY,
@@ -3489,8 +4086,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 
-	DocumentContext.prototype.addPage = function(pageSize) {
-		var page = { items: [], pageSize: pageSize };
+	DocumentContext.prototype.addPage = function (pageSize) {
+		var page = {items: [], pageSize: pageSize};
 		this.pages.push(page);
 		this.page = this.pages.length - 1;
 		this.initializePage();
@@ -3500,35 +4097,41 @@ return /******/ (function(modules) { // webpackBootstrap
 		return page;
 	};
 
-	DocumentContext.prototype.getCurrentPage = function() {
-		if (this.page < 0 || this.page >= this.pages.length) return null;
+	DocumentContext.prototype.getCurrentPage = function () {
+		if (this.page < 0 || this.page >= this.pages.length) {
+			return null;
+		}
 
 		return this.pages[this.page];
 	};
 
-	DocumentContext.prototype.getCurrentPosition = function() {
-	  var pageSize = this.getCurrentPage().pageSize;
-	  var innerHeight = pageSize.height - this.pageMargins.top - this.pageMargins.bottom;
-	  var innerWidth = pageSize.width - this.pageMargins.left - this.pageMargins.right;
+	DocumentContext.prototype.getCurrentPosition = function () {
+		var pageSize = this.getCurrentPage().pageSize;
+		var innerHeight = pageSize.height - this.pageMargins.top - this.pageMargins.bottom;
+		var innerWidth = pageSize.width - this.pageMargins.left - this.pageMargins.right;
 
-	  return {
-	    pageNumber: this.page + 1,
-	    pageOrientation: pageSize.orientation,
-	    pageInnerHeight: innerHeight,
-	    pageInnerWidth: innerWidth,
-	    left: this.x,
-	    top: this.y,
-	    verticalRatio: ((this.y - this.pageMargins.top) / innerHeight),
-	    horizontalRatio: ((this.x - this.pageMargins.left) / innerWidth)
-	  };
+		return {
+			pageNumber: this.page + 1,
+			pageOrientation: pageSize.orientation,
+			pageInnerHeight: innerHeight,
+			pageInnerWidth: innerWidth,
+			left: this.x,
+			top: this.y,
+			verticalRatio: ((this.y - this.pageMargins.top) / innerHeight),
+			horizontalRatio: ((this.x - this.pageMargins.left) / innerWidth)
+		};
 	};
 
 	function bottomMostContext(c1, c2) {
 		var r;
 
-		if (c1.page > c2.page) r = c1;
-		else if (c2.page > c1.page) r = c2;
-		else r = (c1.y > c2.y) ? c1 : c2;
+		if (c1.page > c2.page) {
+			r = c1;
+		} else if (c2.page > c1.page) {
+			r = c2;
+		} else {
+			r = (c1.y > c2.y) ? c1 : c2;
+		}
 
 		return {
 			page: r.page,
@@ -3540,30 +4143,30 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	/****TESTS**** (add a leading '/' to uncomment)
-	DocumentContext.bottomMostContext = bottomMostContext;
-	// */
+	 DocumentContext.bottomMostContext = bottomMostContext;
+	 // */
 
 	module.exports = DocumentContext;
 
 
 /***/ },
-/* 14 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var ElementWriter = __webpack_require__(15);
+	var ElementWriter = __webpack_require__(20);
 
 	/**
-	* Creates an instance of PageElementWriter - an extended ElementWriter
-	* which can handle:
-	* - page-breaks (it adds new pages when there's not enough space left),
-	* - repeatable fragments (like table-headers, which are repeated everytime
-	*                         a page-break occurs)
-	* - transactions (used for unbreakable-blocks when we want to make sure
-	*                 whole block will be rendered on the same page)
-	*/
+	 * Creates an instance of PageElementWriter - an extended ElementWriter
+	 * which can handle:
+	 * - page-breaks (it adds new pages when there's not enough space left),
+	 * - repeatable fragments (like table-headers, which are repeated everytime
+	 *                         a page-break occurs)
+	 * - transactions (used for unbreakable-blocks when we want to make sure
+	 *                 whole block will be rendered on the same page)
+	 */
 	function PageElementWriter(context, tracker) {
 		this.transactionLevel = 0;
 		this.repeatables = [];
@@ -3571,54 +4174,54 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.writer = new ElementWriter(context, tracker);
 	}
 
-	function fitOnPage(self, addFct){
-	  var position = addFct(self);
-	  if (!position) {
-	    self.moveToNextPage();
-	    position = addFct(self);
-	  }
-	  return position;
+	function fitOnPage(self, addFct) {
+		var position = addFct(self);
+		if (!position) {
+			self.moveToNextPage();
+			position = addFct(self);
+		}
+		return position;
 	}
 
-	PageElementWriter.prototype.addLine = function(line, dontUpdateContextPosition, index) {
-	  return fitOnPage(this, function(self){
-	    return self.writer.addLine(line, dontUpdateContextPosition, index);
-	  });
+	PageElementWriter.prototype.addLine = function (line, dontUpdateContextPosition, index) {
+		return fitOnPage(this, function (self) {
+			return self.writer.addLine(line, dontUpdateContextPosition, index);
+		});
 	};
 
-	PageElementWriter.prototype.addImage = function(image, index) {
-	  return fitOnPage(this, function(self){
-	    return self.writer.addImage(image, index);
-	  });
+	PageElementWriter.prototype.addImage = function (image, index) {
+		return fitOnPage(this, function (self) {
+			return self.writer.addImage(image, index);
+		});
 	};
 
-	PageElementWriter.prototype.addQr = function(qr, index) {
-	  return fitOnPage(this, function(self){
+	PageElementWriter.prototype.addQr = function (qr, index) {
+		return fitOnPage(this, function (self) {
 			return self.writer.addQr(qr, index);
 		});
 	};
 
-	PageElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
+	PageElementWriter.prototype.addVector = function (vector, ignoreContextX, ignoreContextY, index) {
 		return this.writer.addVector(vector, ignoreContextX, ignoreContextY, index);
 	};
 
-	PageElementWriter.prototype.addFragment = function(fragment, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition) {
+	PageElementWriter.prototype.addFragment = function (fragment, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition) {
 		if (!this.writer.addFragment(fragment, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition)) {
 			this.moveToNextPage();
 			this.writer.addFragment(fragment, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition);
 		}
 	};
 
-	PageElementWriter.prototype.moveToNextPage = function(pageOrientation) {
-		
+	PageElementWriter.prototype.moveToNextPage = function (pageOrientation) {
+
 		var nextPage = this.writer.context.moveToNextPage(pageOrientation);
-		
-	  if (nextPage.newPageCreated) {
-			this.repeatables.forEach(function(rep) {
+
+		if (nextPage.newPageCreated) {
+			this.repeatables.forEach(function (rep) {
 				this.writer.addFragment(rep, true);
 			}, this);
 		} else {
-			this.repeatables.forEach(function(rep) {
+			this.repeatables.forEach(function (rep) {
 				this.writer.context.moveDown(rep.height);
 			}, this);
 		}
@@ -3630,27 +4233,27 @@ return /******/ (function(modules) { // webpackBootstrap
 		});
 	};
 
-	PageElementWriter.prototype.beginUnbreakableBlock = function(width, height) {
+	PageElementWriter.prototype.beginUnbreakableBlock = function (width, height) {
 		if (this.transactionLevel++ === 0) {
 			this.originalX = this.writer.context.x;
 			this.writer.pushContext(width, height);
 		}
 	};
 
-	PageElementWriter.prototype.commitUnbreakableBlock = function(forcedX, forcedY) {
+	PageElementWriter.prototype.commitUnbreakableBlock = function (forcedX, forcedY) {
 		if (--this.transactionLevel === 0) {
 			var unbreakableContext = this.writer.context;
 			this.writer.popContext();
 
 			var nbPages = unbreakableContext.pages.length;
-			if(nbPages > 0) {
+			if (nbPages > 0) {
 				// no support for multi-page unbreakableBlocks
 				var fragment = unbreakableContext.pages[0];
 				fragment.xOffset = forcedX;
 				fragment.yOffset = forcedY;
 
 				//TODO: vectors can influence height in some situations
-				if(nbPages > 1) {
+				if (nbPages > 1) {
 					// on out-of-context blocs (headers, footers, background) height should be the whole DocumentContext height
 					if (forcedX !== undefined || forcedY !== undefined) {
 						fragment.height = unbreakableContext.getCurrentPage().pageSize.height - unbreakableContext.pageMargins.top - unbreakableContext.pageMargins.bottom;
@@ -3673,13 +4276,13 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	PageElementWriter.prototype.currentBlockToRepeatable = function() {
+	PageElementWriter.prototype.currentBlockToRepeatable = function () {
 		var unbreakableContext = this.writer.context;
-		var rep = { items: [] };
+		var rep = {items: []};
 
-	    unbreakableContext.pages[0].items.forEach(function(item) {
-	        rep.items.push(item);
-	    });
+		unbreakableContext.pages[0].items.forEach(function (item) {
+			rep.items.push(item);
+		});
 
 		rep.xOffset = this.originalX;
 
@@ -3689,15 +4292,15 @@ return /******/ (function(modules) { // webpackBootstrap
 		return rep;
 	};
 
-	PageElementWriter.prototype.pushToRepeatables = function(rep) {
+	PageElementWriter.prototype.pushToRepeatables = function (rep) {
 		this.repeatables.push(rep);
 	};
 
-	PageElementWriter.prototype.popFromRepeatables = function() {
+	PageElementWriter.prototype.popFromRepeatables = function () {
 		this.repeatables.pop();
 	};
 
-	PageElementWriter.prototype.context = function() {
+	PageElementWriter.prototype.context = function () {
 		return this.writer.context;
 	};
 
@@ -3705,21 +4308,21 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 15 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var Line = __webpack_require__(16);
-	var pack = __webpack_require__(11).pack;
-	var offsetVector = __webpack_require__(11).offsetVector;
-	var DocumentContext = __webpack_require__(13);
+	var Line = __webpack_require__(21);
+	var pack = __webpack_require__(16).pack;
+	var offsetVector = __webpack_require__(16).offsetVector;
+	var DocumentContext = __webpack_require__(18);
 
 	/**
-	* Creates an instance of ElementWriter - a line/vector writer, which adds
-	* elements to current page and sets their positions based on the context
-	*/
+	 * Creates an instance of ElementWriter - a line/vector writer, which adds
+	 * elements to current page and sets their positions based on the context
+	 */
 	function ElementWriter(context, tracker) {
 		this.context = context;
 		this.contextStack = [];
@@ -3727,18 +4330,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	function addPageItem(page, item, index) {
-		if(index === null || index === undefined || index < 0 || index > page.items.length) {
+		if (index === null || index === undefined || index < 0 || index > page.items.length) {
 			page.items.push(item);
 		} else {
 			page.items.splice(index, 0, item);
 		}
 	}
 
-	ElementWriter.prototype.addLine = function(line, dontUpdateContextPosition, index) {
+	ElementWriter.prototype.addLine = function (line, dontUpdateContextPosition, index) {
 		var height = line.getHeight();
 		var context = this.context;
 		var page = context.getCurrentPage(),
-	      position = this.getCurrentPositionOnPage();
+			position = this.getCurrentPositionOnPage();
 
 		if (context.availableHeight < height || !page) {
 			return false;
@@ -3749,25 +4352,27 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		this.alignLine(line);
 
-	    addPageItem(page, {
-	        type: 'line',
-	        item: line
-	    }, index);
+		addPageItem(page, {
+			type: 'line',
+			item: line
+		}, index);
 		this.tracker.emit('lineAdded', line);
 
-		if (!dontUpdateContextPosition) context.moveDown(height);
+		if (!dontUpdateContextPosition) {
+			context.moveDown(height);
+		}
 
 		return position;
 	};
 
-	ElementWriter.prototype.alignLine = function(line) {
+	ElementWriter.prototype.alignLine = function (line) {
 		var width = this.context.availableWidth;
 		var lineWidth = line.getWidth();
 
 		var alignment = line.inlines && line.inlines.length > 0 && line.inlines[0].alignment;
 
 		var offset = 0;
-		switch(alignment) {
+		switch (alignment) {
 			case 'right':
 				offset = width - lineWidth;
 				break;
@@ -3786,7 +4391,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			line.inlines.length > 1) {
 			var additionalSpacing = (width - lineWidth) / (line.inlines.length - 1);
 
-			for(var i = 1, l = line.inlines.length; i < l; i++) {
+			for (var i = 1, l = line.inlines.length; i < l; i++) {
 				offset = i * additionalSpacing;
 
 				line.inlines[i].x += offset;
@@ -3794,45 +4399,53 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	ElementWriter.prototype.addImage = function(image, index) {
+	ElementWriter.prototype.addImage = function (image, index) {
 		var context = this.context;
 		var page = context.getCurrentPage(),
-	      position = this.getCurrentPositionOnPage();
+			position = this.getCurrentPositionOnPage();
 
 		if (context.availableHeight < image._height || !page) {
 			return false;
 		}
 
-		image.x = context.x + (image.x || 0);
+		if (image._x === undefined) {
+			image._x = image.x || 0;
+		}
+
+		image.x = context.x + image._x;
 		image.y = context.y;
 
 		this.alignImage(image);
 
 		addPageItem(page, {
-	        type: 'image',
-	        item: image
-	    }, index);
+			type: 'image',
+			item: image
+		}, index);
 
 		context.moveDown(image._height);
 
 		return position;
 	};
 
-	ElementWriter.prototype.addQr = function(qr, index) {
+	ElementWriter.prototype.addQr = function (qr, index) {
 		var context = this.context;
 		var page = context.getCurrentPage(),
-	      position = this.getCurrentPositionOnPage();
+			position = this.getCurrentPositionOnPage();
 
 		if (context.availableHeight < qr._height || !page) {
 			return false;
 		}
 
-		qr.x = context.x + (qr.x || 0);
+		if (qr._x === undefined) {
+			qr._x = qr.x || 0;
+		}
+
+		qr.x = context.x + qr._x;
 		qr.y = context.y;
 
 		this.alignImage(qr);
 
-		for (var i=0, l=qr._canvas.length; i < l; i++) {
+		for (var i = 0, l = qr._canvas.length; i < l; i++) {
 			var vector = qr._canvas[i];
 			vector.x += qr.x;
 			vector.y += qr.y;
@@ -3844,11 +4457,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		return position;
 	};
 
-	ElementWriter.prototype.alignImage = function(image) {
+	ElementWriter.prototype.alignImage = function (image) {
 		var width = this.context.availableWidth;
 		var imageWidth = image._minWidth;
 		var offset = 0;
-		switch(image._alignment) {
+		switch (image._alignment) {
 			case 'right':
 				offset = width - imageWidth;
 				break;
@@ -3862,17 +4475,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	ElementWriter.prototype.addVector = function(vector, ignoreContextX, ignoreContextY, index) {
+	ElementWriter.prototype.addVector = function (vector, ignoreContextX, ignoreContextY, index) {
 		var context = this.context;
 		var page = context.getCurrentPage(),
-	      position = this.getCurrentPositionOnPage();
+			position = this.getCurrentPositionOnPage();
 
 		if (page) {
 			offsetVector(vector, ignoreContextX ? 0 : context.x, ignoreContextY ? 0 : context.y);
-	        addPageItem(page, {
-	            type: 'vector',
-	            item: vector
-	        }, index);
+			addPageItem(page, {
+				type: 'vector',
+				item: vector
+			}, index);
 			return position;
 		}
 	};
@@ -3880,7 +4493,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	function cloneLine(line) {
 		var result = new Line(line.maxWidth);
 
-		for(var key in line) {
+		for (var key in line) {
 			if (line.hasOwnProperty(key)) {
 				result[key] = line[key];
 			}
@@ -3889,81 +4502,85 @@ return /******/ (function(modules) { // webpackBootstrap
 		return result;
 	}
 
-	ElementWriter.prototype.addFragment = function(block, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition) {
+	ElementWriter.prototype.addFragment = function (block, useBlockXOffset, useBlockYOffset, dontUpdateContextPosition) {
 		var ctx = this.context;
 		var page = ctx.getCurrentPage();
 
-		if (!useBlockXOffset && block.height > ctx.availableHeight) return false;
+		if (!useBlockXOffset && block.height > ctx.availableHeight) {
+			return false;
+		}
 
-		block.items.forEach(function(item) {
-	        switch(item.type) {
-	            case 'line':
-	                var l = cloneLine(item.item);
+		block.items.forEach(function (item) {
+			switch (item.type) {
+				case 'line':
+					var l = cloneLine(item.item);
 
-	                l.x = (l.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
-	                l.y = (l.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
+					l.x = (l.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
+					l.y = (l.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
 
-	                page.items.push({
-	                    type: 'line',
-	                    item: l
-	                });
-	                break;
+					page.items.push({
+						type: 'line',
+						item: l
+					});
+					break;
 
-	            case 'vector':
-	                var v = pack(item.item);
+				case 'vector':
+					var v = pack(item.item);
 
-	                offsetVector(v, useBlockXOffset ? (block.xOffset || 0) : ctx.x, useBlockYOffset ? (block.yOffset || 0) : ctx.y);
-	                page.items.push({
-	                    type: 'vector',
-	                    item: v
-	                });
-	                break;
+					offsetVector(v, useBlockXOffset ? (block.xOffset || 0) : ctx.x, useBlockYOffset ? (block.yOffset || 0) : ctx.y);
+					page.items.push({
+						type: 'vector',
+						item: v
+					});
+					break;
 
-	            case 'image':
-	                var img = pack(item.item);
+				case 'image':
+					var img = pack(item.item);
 
-	                img.x = (img.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
-	                img.y = (img.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
+					img.x = (img.x || 0) + (useBlockXOffset ? (block.xOffset || 0) : ctx.x);
+					img.y = (img.y || 0) + (useBlockYOffset ? (block.yOffset || 0) : ctx.y);
 
-	                page.items.push({
-	                    type: 'image',
-	                    item: img
-	                });
-	                break;
-	        }
+					page.items.push({
+						type: 'image',
+						item: img
+					});
+					break;
+			}
 		});
 
-		if (!dontUpdateContextPosition) ctx.moveDown(block.height);
+		if (!dontUpdateContextPosition) {
+			ctx.moveDown(block.height);
+		}
 
 		return true;
 	};
 
 	/**
-	* Pushes the provided context onto the stack or creates a new one
-	*
-	* pushContext(context) - pushes the provided context and makes it current
-	* pushContext(width, height) - creates and pushes a new context with the specified width and height
-	* pushContext() - creates a new context for unbreakable blocks (with current availableWidth and full-page-height)
-	*/
-	ElementWriter.prototype.pushContext = function(contextOrWidth, height) {
+	 * Pushes the provided context onto the stack or creates a new one
+	 *
+	 * pushContext(context) - pushes the provided context and makes it current
+	 * pushContext(width, height) - creates and pushes a new context with the specified width and height
+	 * pushContext() - creates a new context for unbreakable blocks (with current availableWidth and full-page-height)
+	 */
+	ElementWriter.prototype.pushContext = function (contextOrWidth, height) {
 		if (contextOrWidth === undefined) {
 			height = this.context.getCurrentPage().height - this.context.pageMargins.top - this.context.pageMargins.bottom;
 			contextOrWidth = this.context.availableWidth;
 		}
 
 		if (typeof contextOrWidth === 'number' || contextOrWidth instanceof Number) {
-			contextOrWidth = new DocumentContext({ width: contextOrWidth, height: height }, { left: 0, right: 0, top: 0, bottom: 0 });
+			contextOrWidth = new DocumentContext({width: contextOrWidth, height: height}, {left: 0, right: 0, top: 0, bottom: 0});
 		}
 
 		this.contextStack.push(this.context);
 		this.context = contextOrWidth;
 	};
 
-	ElementWriter.prototype.popContext = function() {
+	ElementWriter.prototype.popContext = function () {
 		this.context = this.contextStack.pop();
 	};
 
-	ElementWriter.prototype.getCurrentPositionOnPage = function(){
+	ElementWriter.prototype.getCurrentPositionOnPage = function () {
 		return (this.contextStack[0] || this.context).getCurrentPosition();
 	};
 
@@ -3972,19 +4589,19 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 16 */
+/* 21 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
 	'use strict';
 
 	/**
-	* Creates an instance of Line
-	*
-	* @constructor
-	* @this {Line}
-	* @param {Number} Maximum width this line can have
-	*/
+	 * Creates an instance of Line
+	 *
+	 * @constructor
+	 * @this {Line}
+	 * @param {Number} Maximum width this line can have
+	 */
 	function Line(maxWidth) {
 		this.maxWidth = maxWidth;
 		this.leadingCut = 0;
@@ -3993,23 +4610,27 @@ return /******/ (function(modules) { // webpackBootstrap
 		this.inlines = [];
 	}
 
-	Line.prototype.getAscenderHeight = function() {
+	Line.prototype.getAscenderHeight = function () {
 		var y = 0;
 
-		this.inlines.forEach(function(inline) {
+		this.inlines.forEach(function (inline) {
 			y = Math.max(y, inline.font.ascender / 1000 * inline.fontSize);
 		});
 		return y;
 	};
 
-	Line.prototype.hasEnoughSpaceForInline = function(inline) {
-		if (this.inlines.length === 0) return true;
-		if (this.newLineForced) return false;
+	Line.prototype.hasEnoughSpaceForInline = function (inline) {
+		if (this.inlines.length === 0) {
+			return true;
+		}
+		if (this.newLineForced) {
+			return false;
+		}
 
 		return this.inlineWidths + inline.width - this.leadingCut - (inline.trailingCut || 0) <= this.maxWidth;
 	};
 
-	Line.prototype.addInline = function(inline) {
+	Line.prototype.addInline = function (inline) {
 		if (this.inlines.length === 0) {
 			this.leadingCut = inline.leadingCut || 0;
 		}
@@ -4025,18 +4646,18 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 	};
 
-	Line.prototype.getWidth = function() {
+	Line.prototype.getWidth = function () {
 		return this.inlineWidths - this.leadingCut - this.trailingCut;
 	};
 
 	/**
-	* Returns line height
-	* @return {Number}
-	*/
-	Line.prototype.getHeight = function() {
+	 * Returns line height
+	 * @return {Number}
+	 */
+	Line.prototype.getHeight = function () {
 		var max = 0;
 
-		this.inlines.forEach(function(item) {
+		this.inlines.forEach(function (item) {
 			max = Math.max(max, item.height || 0);
 		});
 
@@ -4047,318 +4668,417 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 17 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var ColumnCalculator = __webpack_require__(10);
+	var ColumnCalculator = __webpack_require__(15);
 
 	function TableProcessor(tableNode) {
-	  this.tableNode = tableNode;
+		this.tableNode = tableNode;
 	}
 
-	TableProcessor.prototype.beginTable = function(writer) {
-	  var tableNode;
-	  var availableWidth;
-	  var self = this;
+	TableProcessor.prototype.beginTable = function (writer) {
+		var tableNode;
+		var availableWidth;
+		var self = this;
 
-	  tableNode = this.tableNode;
-	  this.offsets = tableNode._offsets;
-	  this.layout = tableNode._layout;
+		tableNode = this.tableNode;
+		this.offsets = tableNode._offsets;
+		this.layout = tableNode._layout;
 
-	  availableWidth = writer.context().availableWidth - this.offsets.total;
-	  ColumnCalculator.buildColumnWidths(tableNode.table.widths, availableWidth);
+		availableWidth = writer.context().availableWidth - this.offsets.total;
+		ColumnCalculator.buildColumnWidths(tableNode.table.widths, availableWidth);
 
-	  this.tableWidth = tableNode._offsets.total + getTableInnerContentWidth();
-	  this.rowSpanData = prepareRowSpanData();
-	  this.cleanUpRepeatables = false;
+		this.tableWidth = tableNode._offsets.total + getTableInnerContentWidth();
+		this.rowSpanData = prepareRowSpanData();
+		this.cleanUpRepeatables = false;
 
-	  this.headerRows = tableNode.table.headerRows || 0;
-	  this.rowsWithoutPageBreak = this.headerRows + (tableNode.table.keepWithHeaderRows || 0);
-	  this.dontBreakRows = tableNode.table.dontBreakRows || false;
+		this.headerRows = tableNode.table.headerRows || 0;
+		this.rowsWithoutPageBreak = this.headerRows + (tableNode.table.keepWithHeaderRows || 0);
+		this.dontBreakRows = tableNode.table.dontBreakRows || false;
 
-	  if (this.rowsWithoutPageBreak) {
-	    writer.beginUnbreakableBlock();
-	  }
+		if (this.rowsWithoutPageBreak) {
+			writer.beginUnbreakableBlock();
+		}
 
-	  this.drawHorizontalLine(0, writer);
+		// update the border properties of all cells before drawing any lines
+		prepareCellBorders(this.tableNode.table.body);
 
-	  function getTableInnerContentWidth() {
-	    var width = 0;
+		this.drawHorizontalLine(0, writer);
 
-	    tableNode.table.widths.forEach(function(w) {
-	      width += w._calcWidth;
-	    });
+		function getTableInnerContentWidth() {
+			var width = 0;
 
-	    return width;
-	  }
+			tableNode.table.widths.forEach(function (w) {
+				width += w._calcWidth;
+			});
 
-	  function prepareRowSpanData() {
-	    var rsd = [];
-	    var x = 0;
-	    var lastWidth = 0;
+			return width;
+		}
 
-	    rsd.push({ left: 0, rowSpan: 0 });
+		function prepareRowSpanData() {
+			var rsd = [];
+			var x = 0;
+			var lastWidth = 0;
 
-	    for(var i = 0, l = self.tableNode.table.body[0].length; i < l; i++) {
-	      var paddings = self.layout.paddingLeft(i, self.tableNode) + self.layout.paddingRight(i, self.tableNode);
-	      var lBorder = self.layout.vLineWidth(i, self.tableNode);
-	      lastWidth = paddings + lBorder + self.tableNode.table.widths[i]._calcWidth;
-	      rsd[rsd.length - 1].width = lastWidth;
-	      x += lastWidth;
-	      rsd.push({ left: x, rowSpan: 0, width: 0 });
-	    }
+			rsd.push({left: 0, rowSpan: 0});
 
-	    return rsd;
-	  }
+			for (var i = 0, l = self.tableNode.table.body[0].length; i < l; i++) {
+				var paddings = self.layout.paddingLeft(i, self.tableNode) + self.layout.paddingRight(i, self.tableNode);
+				var lBorder = self.layout.vLineWidth(i, self.tableNode);
+				lastWidth = paddings + lBorder + self.tableNode.table.widths[i]._calcWidth;
+				rsd[rsd.length - 1].width = lastWidth;
+				x += lastWidth;
+				rsd.push({left: x, rowSpan: 0, width: 0});
+			}
+
+			return rsd;
+		}
+
+		// Iterate through all cells. If the current cell is the start of a
+		// rowSpan/colSpan, update the border property of the cells on its
+		// bottom/right accordingly. This is needed since each iteration of the
+		// line-drawing loops draws lines for a single cell, not for an entire
+		// rowSpan/colSpan.
+		function prepareCellBorders(body) {
+			for (var rowIndex = 0; rowIndex < body.length; rowIndex++) {
+				var row = body[rowIndex];
+
+				for (var colIndex = 0; colIndex < row.length; colIndex++) {
+					var cell = row[colIndex];
+
+					if (cell.border) {
+						var rowSpan = cell.rowSpan || 1;
+						var colSpan = cell.colSpan || 1;
+
+						for (var rowOffset = 0; rowOffset < rowSpan; rowOffset++) {
+							// set left border
+							if (cell.border[0] !== undefined && rowOffset > 0) {
+								setBorder(rowIndex + rowOffset, colIndex, 0, cell.border[0]);
+							}
+
+							// set right border
+							if (cell.border[2] !== undefined) {
+								setBorder(rowIndex + rowOffset, colIndex + colSpan - 1, 2, cell.border[2]);
+							}
+						}
+
+						for (var colOffset = 0; colOffset < colSpan; colOffset++) {
+							// set top border
+							if (cell.border[1] !== undefined && colOffset > 0) {
+								setBorder(rowIndex, colIndex + colOffset, 1, cell.border[1]);
+							}
+
+							// set bottom border
+							if (cell.border[3] !== undefined) {
+								setBorder(rowIndex + rowSpan - 1, colIndex + colOffset, 3, cell.border[3]);
+							}
+						}
+					}
+				}
+			}
+
+			// helper function to set the border for a given cell
+			function setBorder(rowIndex, colIndex, borderIndex, borderValue) {
+				var cell = body[rowIndex][colIndex];
+				cell.border = cell.border || {};
+				cell.border[borderIndex] = borderValue;
+			}
+		}
 	};
 
-	TableProcessor.prototype.onRowBreak = function(rowIndex, writer) {
-	  var self = this;
-	  return function() {
-	    //console.log('moving by : ', topLineWidth, rowPaddingTop);
-	    var offset = self.rowPaddingTop + (!self.headerRows ? self.topLineWidth : 0);
-	    writer.context().moveDown(offset);
-	  };
+	TableProcessor.prototype.onRowBreak = function (rowIndex, writer) {
+		var self = this;
+		return function () {
+			//console.log('moving by : ', topLineWidth, rowPaddingTop);
+			var offset = self.rowPaddingTop + (!self.headerRows ? self.topLineWidth : 0);
+			writer.context().moveDown(offset);
+		};
 
 	};
 
-	TableProcessor.prototype.beginRow = function(rowIndex, writer) {
-	  this.topLineWidth = this.layout.hLineWidth(rowIndex, this.tableNode);
-	  this.rowPaddingTop = this.layout.paddingTop(rowIndex, this.tableNode);
-	  this.bottomLineWidth = this.layout.hLineWidth(rowIndex+1, this.tableNode);
-	  this.rowPaddingBottom = this.layout.paddingBottom(rowIndex, this.tableNode);
+	TableProcessor.prototype.beginRow = function (rowIndex, writer) {
+		this.topLineWidth = this.layout.hLineWidth(rowIndex, this.tableNode);
+		this.rowPaddingTop = this.layout.paddingTop(rowIndex, this.tableNode);
+		this.bottomLineWidth = this.layout.hLineWidth(rowIndex + 1, this.tableNode);
+		this.rowPaddingBottom = this.layout.paddingBottom(rowIndex, this.tableNode);
 
-	  this.rowCallback = this.onRowBreak(rowIndex, writer);
-	  writer.tracker.startTracking('pageChanged', this.rowCallback );
-	    if(this.dontBreakRows) {
-	        writer.beginUnbreakableBlock();
-	    }
-	  this.rowTopY = writer.context().y;
-	  this.reservedAtBottom = this.bottomLineWidth + this.rowPaddingBottom;
+		this.rowCallback = this.onRowBreak(rowIndex, writer);
+		writer.tracker.startTracking('pageChanged', this.rowCallback);
+		if (this.dontBreakRows) {
+			writer.beginUnbreakableBlock();
+		}
+		this.rowTopY = writer.context().y;
+		this.reservedAtBottom = this.bottomLineWidth + this.rowPaddingBottom;
 
-	  writer.context().availableHeight -= this.reservedAtBottom;
+		writer.context().availableHeight -= this.reservedAtBottom;
 
-	  writer.context().moveDown(this.rowPaddingTop);
+		writer.context().moveDown(this.rowPaddingTop);
 	};
 
-	TableProcessor.prototype.drawHorizontalLine = function(lineIndex, writer, overrideY) {
-	  var lineWidth = this.layout.hLineWidth(lineIndex, this.tableNode);
-	  if (lineWidth) {
-	    var offset = lineWidth / 2;
-	    var currentLine = null;
+	TableProcessor.prototype.drawHorizontalLine = function (lineIndex, writer, overrideY) {
+		var lineWidth = this.layout.hLineWidth(lineIndex, this.tableNode);
+		if (lineWidth) {
+			var offset = lineWidth / 2;
+			var currentLine = null;
+			var body = this.tableNode.table.body;
 
-	    for(var i = 0, l = this.rowSpanData.length; i < l; i++) {
-	      var data = this.rowSpanData[i];
-	      var shouldDrawLine = !data.rowSpan;
+			for (var i = 0, l = this.rowSpanData.length; i < l; i++) {
+				var data = this.rowSpanData[i];
+				var shouldDrawLine = !data.rowSpan;
 
-	      if (!currentLine && shouldDrawLine) {
-	        currentLine = { left: data.left, width: 0 };
-	      }
+				// draw only if the current cell requires a top border or the cell in the
+				// row above requires a bottom border
+				if (shouldDrawLine && i < l - 1) {
+					var topBorder = false, bottomBorder = false;
 
-	      if (shouldDrawLine) {
-	        currentLine.width += (data.width || 0);
-	      }
+					// the current cell
+					if (lineIndex < body.length) {
+						var cell = body[lineIndex][i];
+						topBorder = cell.border ? cell.border[1] : this.layout.defaultBorder;
+					}
 
-	      var y = (overrideY || 0) + offset;
+					// the cell in the row above
+					if (lineIndex > 0) {
+						var cellAbove = body[lineIndex - 1][i];
+						bottomBorder = cellAbove.border ? cellAbove.border[3] : this.layout.defaultBorder;
+					}
 
-	      if (!shouldDrawLine || i === l - 1) {
-	        if (currentLine) {
-	          writer.addVector({
-	            type: 'line',
-	            x1: currentLine.left,
-	            x2: currentLine.left + currentLine.width,
-	            y1: y,
-	            y2: y,
-	            lineWidth: lineWidth,
-	            lineColor: typeof this.layout.hLineColor === 'function' ? this.layout.hLineColor(lineIndex, this.tableNode) : this.layout.hLineColor
-	          }, false, overrideY);
-	          currentLine = null;
-	        }
-	      }
-	    }
-
-	    writer.context().moveDown(lineWidth);
-	  }
-	};
-
-	TableProcessor.prototype.drawVerticalLine = function(x, y0, y1, vLineIndex, writer) {
-	  var width = this.layout.vLineWidth(vLineIndex, this.tableNode);
-	  if (width === 0) return;
-	  writer.addVector({
-	    type: 'line',
-	    x1: x + width/2,
-	    x2: x + width/2,
-	    y1: y0,
-	    y2: y1,
-	    lineWidth: width,
-	    lineColor: typeof this.layout.vLineColor === 'function' ? this.layout.vLineColor(vLineIndex, this.tableNode) : this.layout.vLineColor
-	  }, false, true);
-	};
-
-	TableProcessor.prototype.endTable = function(writer) {
-	  if (this.cleanUpRepeatables) {
-	    writer.popFromRepeatables();
-	  }
-	};
-
-	TableProcessor.prototype.endRow = function(rowIndex, writer, pageBreaks) {
-	    var l, i;
-	    var self = this;
-	    writer.tracker.stopTracking('pageChanged', this.rowCallback);
-	    writer.context().moveDown(this.layout.paddingBottom(rowIndex, this.tableNode));
-	    writer.context().availableHeight += this.reservedAtBottom;
-
-	    var endingPage = writer.context().page;
-	    var endingY = writer.context().y;
-
-	    var xs = getLineXs();
-
-	    var ys = [];
-
-	    var hasBreaks = pageBreaks && pageBreaks.length > 0;
-
-	    ys.push({
-	      y0: this.rowTopY,
-	      page: hasBreaks ? pageBreaks[0].prevPage : endingPage
-	    });
-
-	    if (hasBreaks) {
-	      for(i = 0, l = pageBreaks.length; i < l; i++) {
-	        var pageBreak = pageBreaks[i];
-	        ys[ys.length - 1].y1 = pageBreak.prevY;
-
-	        ys.push({y0: pageBreak.y, page: pageBreak.prevPage + 1});
-	      }
-	    }
-
-	    ys[ys.length - 1].y1 = endingY;
-
-	    var skipOrphanePadding = (ys[0].y1 - ys[0].y0 === this.rowPaddingTop);
-	    for(var yi = (skipOrphanePadding ? 1 : 0), yl = ys.length; yi < yl; yi++) {
-	      var willBreak = yi < ys.length - 1;
-	      var rowBreakWithoutHeader = (yi > 0 && !this.headerRows);
-	      var hzLineOffset =  rowBreakWithoutHeader ? 0 : this.topLineWidth;
-	      var y1 = ys[yi].y0;
-	      var y2 = ys[yi].y1;
-
-				if(willBreak) {
-					y2 = y2 + this.rowPaddingBottom;
+					shouldDrawLine = topBorder || bottomBorder;
 				}
 
-	      if (writer.context().page != ys[yi].page) {
-	        writer.context().page = ys[yi].page;
+				if (!currentLine && shouldDrawLine) {
+					currentLine = {left: data.left, width: 0};
+				}
 
-	        //TODO: buggy, availableHeight should be updated on every pageChanged event
-	        // TableProcessor should be pageChanged listener, instead of processRow
-	        this.reservedAtBottom = 0;
-	      }
+				if (shouldDrawLine) {
+					currentLine.width += (data.width || 0);
+				}
 
-	      for(i = 0, l = xs.length; i < l; i++) {
-	        this.drawVerticalLine(xs[i].x, y1 - hzLineOffset, y2 + this.bottomLineWidth, xs[i].index, writer);
-	        if(i < l-1) {
-	          var colIndex = xs[i].index;
-	          var fillColor=  this.tableNode.table.body[rowIndex][colIndex].fillColor;
-	          if(fillColor ) {
-	            var wBorder = this.layout.vLineWidth(colIndex, this.tableNode);
-	            var xf = xs[i].x+wBorder;
-	            var yf = y1 - hzLineOffset;
-	            writer.addVector({
-	              type: 'rect',
-	              x: xf,
-	              y: yf,
-	              w: xs[i+1].x-xf,
-	              h: y2+this.bottomLineWidth-yf,
-	              lineWidth: 0,
-	              color: fillColor
-	            }, false, true, 0);
-	          }
-	        }
-	      }
+				var y = (overrideY || 0) + offset;
 
-	      if (willBreak && this.layout.hLineWhenBroken !== false) {
-	        this.drawHorizontalLine(rowIndex + 1, writer, y2);
-	      }
-	      if(rowBreakWithoutHeader && this.layout.hLineWhenBroken !== false) {
-	        this.drawHorizontalLine(rowIndex, writer, y1);
-	      }
-	    }
+				if (!shouldDrawLine || i === l - 1) {
+					if (currentLine && currentLine.width) {
+						writer.addVector({
+							type: 'line',
+							x1: currentLine.left,
+							x2: currentLine.left + currentLine.width,
+							y1: y,
+							y2: y,
+							lineWidth: lineWidth,
+							lineColor: typeof this.layout.hLineColor === 'function' ? this.layout.hLineColor(lineIndex, this.tableNode) : this.layout.hLineColor
+						}, false, overrideY);
+						currentLine = null;
+					}
+				}
+			}
 
-	    writer.context().page = endingPage;
-	    writer.context().y = endingY;
+			writer.context().moveDown(lineWidth);
+		}
+	};
 
-	    var row = this.tableNode.table.body[rowIndex];
-	    for(i = 0, l = row.length; i < l; i++) {
-	      if (row[i].rowSpan) {
-	        this.rowSpanData[i].rowSpan = row[i].rowSpan;
+	TableProcessor.prototype.drawVerticalLine = function (x, y0, y1, vLineIndex, writer) {
+		var width = this.layout.vLineWidth(vLineIndex, this.tableNode);
+		if (width === 0) {
+			return;
+		}
+		writer.addVector({
+			type: 'line',
+			x1: x + width / 2,
+			x2: x + width / 2,
+			y1: y0,
+			y2: y1,
+			lineWidth: width,
+			lineColor: typeof this.layout.vLineColor === 'function' ? this.layout.vLineColor(vLineIndex, this.tableNode) : this.layout.vLineColor
+		}, false, true);
+	};
 
-	        // fix colSpans
-	        if (row[i].colSpan && row[i].colSpan > 1) {
-	          for(var j = 1; j < row[i].rowSpan; j++) {
-	            this.tableNode.table.body[rowIndex + j][i]._colSpan = row[i].colSpan;
-	          }
-	        }
-	      }
+	TableProcessor.prototype.endTable = function (writer) {
+		if (this.cleanUpRepeatables) {
+			writer.popFromRepeatables();
+		}
+	};
 
-	      if(this.rowSpanData[i].rowSpan > 0) {
-	        this.rowSpanData[i].rowSpan--;
-	      }
-	    }
+	TableProcessor.prototype.endRow = function (rowIndex, writer, pageBreaks) {
+		var l, i;
+		var self = this;
+		writer.tracker.stopTracking('pageChanged', this.rowCallback);
+		writer.context().moveDown(this.layout.paddingBottom(rowIndex, this.tableNode));
+		writer.context().availableHeight += this.reservedAtBottom;
 
-	    this.drawHorizontalLine(rowIndex + 1, writer);
+		var endingPage = writer.context().page;
+		var endingY = writer.context().y;
 
-	    if(this.headerRows && rowIndex === this.headerRows - 1) {
-	      this.headerRepeatable = writer.currentBlockToRepeatable();
-	    }
+		var xs = getLineXs();
 
-	    if(this.dontBreakRows) {
-	      writer.tracker.auto('pageChanged',
-	        function() {
-	          self.drawHorizontalLine(rowIndex, writer);
-	        },
-	        function() {
-	          writer.commitUnbreakableBlock();
-	          self.drawHorizontalLine(rowIndex, writer);
-	        }
-	      );
-	    }
+		var ys = [];
 
-	    if(this.headerRepeatable && (rowIndex === (this.rowsWithoutPageBreak - 1) || rowIndex === this.tableNode.table.body.length - 1)) {
-	      writer.commitUnbreakableBlock();
-	      writer.pushToRepeatables(this.headerRepeatable);
-	      this.cleanUpRepeatables = true;
-	      this.headerRepeatable = null;
-	    }
+		var hasBreaks = pageBreaks && pageBreaks.length > 0;
+		var body = this.tableNode.table.body;
 
-	    function getLineXs() {
-	      var result = [];
-	      var cols = 0;
+		ys.push({
+			y0: this.rowTopY,
+			page: hasBreaks ? pageBreaks[0].prevPage : endingPage
+		});
 
-	      for(var i = 0, l = self.tableNode.table.body[rowIndex].length; i < l; i++) {
-	        if (!cols) {
-	          result.push({ x: self.rowSpanData[i].left, index: i});
+		if (hasBreaks) {
+			for (i = 0, l = pageBreaks.length; i < l; i++) {
+				var pageBreak = pageBreaks[i];
+				ys[ys.length - 1].y1 = pageBreak.prevY;
 
-	          var item = self.tableNode.table.body[rowIndex][i];
-	          cols = (item._colSpan || item.colSpan || 0);
-	        }
-	        if (cols > 0) {
-	          cols--;
-	        }
-	      }
+				ys.push({y0: pageBreak.y, page: pageBreak.prevPage + 1});
+			}
+		}
 
-	      result.push({ x: self.rowSpanData[self.rowSpanData.length - 1].left, index: self.rowSpanData.length - 1});
+		ys[ys.length - 1].y1 = endingY;
 
-	      return result;
-	    }
+		var skipOrphanePadding = (ys[0].y1 - ys[0].y0 === this.rowPaddingTop);
+		for (var yi = (skipOrphanePadding ? 1 : 0), yl = ys.length; yi < yl; yi++) {
+			var willBreak = yi < ys.length - 1;
+			var rowBreakWithoutHeader = (yi > 0 && !this.headerRows);
+			var hzLineOffset = rowBreakWithoutHeader ? 0 : this.topLineWidth;
+			var y1 = ys[yi].y0;
+			var y2 = ys[yi].y1;
+
+			if (willBreak) {
+				y2 = y2 + this.rowPaddingBottom;
+			}
+
+			if (writer.context().page != ys[yi].page) {
+				writer.context().page = ys[yi].page;
+
+				//TODO: buggy, availableHeight should be updated on every pageChanged event
+				// TableProcessor should be pageChanged listener, instead of processRow
+				this.reservedAtBottom = 0;
+			}
+
+			for (i = 0, l = xs.length; i < l; i++) {
+				var leftBorder = false, rightBorder = false;
+				var colIndex = xs[i].index;
+
+				// the current cell
+				if (colIndex < body[rowIndex].length) {
+					var cell = body[rowIndex][colIndex];
+					leftBorder = cell.border ? cell.border[0] : this.layout.defaultBorder;
+				}
+
+				// the cell from before column
+				if (colIndex > 0) {
+					var cell = body[rowIndex][colIndex - 1];
+					rightBorder = cell.border ? cell.border[2] : this.layout.defaultBorder;
+				}
+
+				if (leftBorder || rightBorder) {
+					this.drawVerticalLine(xs[i].x, y1 - hzLineOffset, y2 + this.bottomLineWidth, xs[i].index, writer);
+				}
+
+				if (i < l - 1) {
+					var fillColor = body[rowIndex][colIndex].fillColor;
+					if (!fillColor) {
+						fillColor = typeof this.layout.fillColor === 'function' ? this.layout.fillColor(rowIndex, this.tableNode) : this.layout.fillColor;
+					}
+					if (fillColor) {
+						var wBorder = (leftBorder || rightBorder) ? this.layout.vLineWidth(colIndex, this.tableNode) : 0;
+						var xf = xs[i].x + wBorder;
+						var yf = this.dontBreakRows ? y1 : y1 - hzLineOffset;
+						writer.addVector({
+							type: 'rect',
+							x: xf,
+							y: yf,
+							w: xs[i + 1].x - xf,
+							h: y2 + this.bottomLineWidth - yf,
+							lineWidth: 0,
+							color: fillColor
+						}, false, true, 0);
+					}
+				}
+			}
+
+			if (willBreak && this.layout.hLineWhenBroken !== false) {
+				this.drawHorizontalLine(rowIndex + 1, writer, y2);
+			}
+			if (rowBreakWithoutHeader && this.layout.hLineWhenBroken !== false) {
+				this.drawHorizontalLine(rowIndex, writer, y1);
+			}
+		}
+
+		writer.context().page = endingPage;
+		writer.context().y = endingY;
+
+		var row = this.tableNode.table.body[rowIndex];
+		for (i = 0, l = row.length; i < l; i++) {
+			if (row[i].rowSpan) {
+				this.rowSpanData[i].rowSpan = row[i].rowSpan;
+
+				// fix colSpans
+				if (row[i].colSpan && row[i].colSpan > 1) {
+					for (var j = 1; j < row[i].rowSpan; j++) {
+						this.tableNode.table.body[rowIndex + j][i]._colSpan = row[i].colSpan;
+					}
+				}
+			}
+
+			if (this.rowSpanData[i].rowSpan > 0) {
+				this.rowSpanData[i].rowSpan--;
+			}
+		}
+
+		this.drawHorizontalLine(rowIndex + 1, writer);
+
+		if (this.headerRows && rowIndex === this.headerRows - 1) {
+			this.headerRepeatable = writer.currentBlockToRepeatable();
+		}
+
+		if (this.dontBreakRows) {
+			writer.tracker.auto('pageChanged',
+				function () {
+					if (!self.headerRows && self.layout.hLineWhenBroken !== false) {
+						self.drawHorizontalLine(rowIndex, writer);
+					}
+				},
+				function () {
+					writer.commitUnbreakableBlock();
+				}
+			);
+		}
+
+		if (this.headerRepeatable && (rowIndex === (this.rowsWithoutPageBreak - 1) || rowIndex === this.tableNode.table.body.length - 1)) {
+			writer.commitUnbreakableBlock();
+			writer.pushToRepeatables(this.headerRepeatable);
+			this.cleanUpRepeatables = true;
+			this.headerRepeatable = null;
+		}
+
+		function getLineXs() {
+			var result = [];
+			var cols = 0;
+
+			for (var i = 0, l = self.tableNode.table.body[rowIndex].length; i < l; i++) {
+				if (!cols) {
+					result.push({x: self.rowSpanData[i].left, index: i});
+
+					var item = self.tableNode.table.body[rowIndex][i];
+					cols = (item._colSpan || item.colSpan || 0);
+				}
+				if (cols > 0) {
+					cols--;
+				}
+			}
+
+			result.push({x: self.rowSpanData[self.rowSpanData.length - 1].left, index: self.rowSpanData.length - 1});
+
+			return result;
+		}
 	};
 
 	module.exports = TableProcessor;
 
 
 /***/ },
-/* 18 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -4373,15 +5093,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  stream = __webpack_require__(19);
+	  stream = __webpack_require__(24);
 
-	  fs = __webpack_require__(20);
+	  fs = __webpack_require__(10);
 
-	  PDFObject = __webpack_require__(21);
+	  PDFObject = __webpack_require__(25);
 
-	  PDFReference = __webpack_require__(22);
+	  PDFReference = __webpack_require__(26);
 
-	  PDFPage = __webpack_require__(24);
+	  PDFPage = __webpack_require__(28);
 
 	  PDFDocument = (function(superClass) {
 	    var mixin;
@@ -4443,17 +5163,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	      return results;
 	    };
 
-	    mixin(__webpack_require__(25));
-
-	    mixin(__webpack_require__(27));
-
 	    mixin(__webpack_require__(29));
 
-	    mixin(__webpack_require__(49));
+	    mixin(__webpack_require__(31));
 
-	    mixin(__webpack_require__(57));
+	    mixin(__webpack_require__(33));
 
-	    mixin(__webpack_require__(62));
+	    mixin(__webpack_require__(39));
+
+	    mixin(__webpack_require__(46));
+
+	    mixin(__webpack_require__(52));
 
 	    PDFDocument.prototype.addPage = function(options) {
 	      var pages;
@@ -4562,7 +5282,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      ref2 = this._fontFamilies;
 	      for (name in ref2) {
 	        font = ref2[name];
-	        font.embed();
+	        font.finalize();
 	      }
 	      this._root.end();
 	      this._root.data.Pages.end();
@@ -4611,21 +5331,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 19 */
+/* 24 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_19__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_24__;
 
 /***/ },
-/* 20 */
-/***/ function(module, exports) {
-
-	"use strict";
-
-	module.exports = {};
-
-/***/ },
-/* 21 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -4699,7 +5411,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      } else if (object instanceof PDFReference) {
 	        return object.toString();
 	      } else if (object instanceof Date) {
-	        return '(D:' + pad(object.getUTCFullYear(), 4) + pad(object.getUTCMonth(), 2) + pad(object.getUTCDate(), 2) + pad(object.getUTCHours(), 2) + pad(object.getUTCMinutes(), 2) + pad(object.getUTCSeconds(), 2) + 'Z)';
+	        return '(D:' + pad(object.getUTCFullYear(), 4) + pad(object.getUTCMonth() + 1, 2) + pad(object.getUTCDate(), 2) + pad(object.getUTCHours(), 2) + pad(object.getUTCMinutes(), 2) + pad(object.getUTCSeconds(), 2) + 'Z)';
 	      } else if (Array.isArray(object)) {
 	        items = ((function() {
 	          var k, len, results;
@@ -4730,13 +5442,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  module.exports = PDFObject;
 
-	  PDFReference = __webpack_require__(22);
+	  PDFReference = __webpack_require__(26);
 
 	}).call(this);
 
 
 /***/ },
-/* 22 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -4747,17 +5459,26 @@ return /******/ (function(modules) { // webpackBootstrap
 	 */
 
 	(function() {
-	  var PDFObject, PDFReference, zlib,
-	    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+	  var PDFObject, PDFReference, stream, zlib,
+	    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+	    hasProp = {}.hasOwnProperty;
 
-	  zlib = __webpack_require__(23);
+	  zlib = __webpack_require__(27);
 
-	  PDFReference = (function() {
+	  stream = __webpack_require__(24);
+
+	  PDFReference = (function(superClass) {
+	    extend(PDFReference, superClass);
+
 	    function PDFReference(document, id, data) {
 	      this.document = document;
 	      this.id = id;
 	      this.data = data != null ? data : {};
 	      this.finalize = bind(this.finalize, this);
+	      PDFReference.__super__.constructor.call(this, {
+	        decodeStrings: false
+	      });
 	      this.gen = 0;
 	      this.deflate = null;
 	      this.compress = this.document.compress && !this.data.Filter;
@@ -4777,7 +5498,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      return this.deflate.on('end', this.finalize);
 	    };
 
-	    PDFReference.prototype.write = function(chunk) {
+	    PDFReference.prototype._write = function(chunk, encoding, callback) {
 	      var base;
 	      if (!Buffer.isBuffer(chunk)) {
 	        chunk = new Buffer(chunk + '\n', 'binary');
@@ -4790,17 +5511,16 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if (!this.deflate) {
 	          this.initDeflate();
 	        }
-	        return this.deflate.write(chunk);
+	        this.deflate.write(chunk);
 	      } else {
 	        this.chunks.push(chunk);
-	        return this.data.Length += chunk.length;
+	        this.data.Length += chunk.length;
 	      }
+	      return callback();
 	    };
 
 	    PDFReference.prototype.end = function(chunk) {
-	      if (typeof chunk === 'string' || Buffer.isBuffer(chunk)) {
-	        this.write(chunk);
-	      }
+	      PDFReference.__super__.end.apply(this, arguments);
 	      if (this.deflate) {
 	        return this.deflate.end();
 	      } else {
@@ -4833,23 +5553,23 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    return PDFReference;
 
-	  })();
+	  })(stream.Writable);
 
 	  module.exports = PDFReference;
 
-	  PDFObject = __webpack_require__(21);
+	  PDFObject = __webpack_require__(25);
 
 	}).call(this);
 
 
 /***/ },
-/* 23 */
+/* 27 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_23__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_27__;
 
 /***/ },
-/* 24 */
+/* 28 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5025,14 +5745,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 25 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFGradient, PDFLinearGradient, PDFRadialGradient, namedColors, ref;
 
-	  ref = __webpack_require__(26), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
+	  ref = __webpack_require__(30), PDFGradient = ref.PDFGradient, PDFLinearGradient = ref.PDFLinearGradient, PDFRadialGradient = ref.PDFRadialGradient;
 
 	  module.exports = {
 	    initColor: function() {
@@ -5346,7 +6066,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 26 */
+/* 30 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5579,7 +6299,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 27 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5587,7 +6307,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var KAPPA, SVGPath,
 	    slice = [].slice;
 
-	  SVGPath = __webpack_require__(28);
+	  SVGPath = __webpack_require__(32);
 
 	  KAPPA = 4.0 * ((Math.sqrt(2) - 1.0) / 3.0);
 
@@ -5830,7 +6550,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 28 */
+/* 32 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -5838,7 +6558,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var SVGPath;
 
 	  SVGPath = (function() {
-	    var apply, arcToSegments, cx, cy, parameters, parse, px, py, runners, segmentToBezier, solveArc, sx, sy;
+	    var apply, arcToSegments, cx, cy, fixRoundingError, parameters, parse, px, py, runners, segmentToBezier, solveArc, sx, sy;
 
 	    function SVGPath() {}
 
@@ -6183,13 +6903,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	      a11 = cos_th * ry;
 	      th_half = 0.5 * (th1 - th0);
 	      t = (8 / 3) * Math.sin(th_half * 0.5) * Math.sin(th_half * 0.5) / Math.sin(th_half);
-	      x1 = cx + Math.cos(th0) - t * Math.sin(th0);
-	      y1 = cy + Math.sin(th0) + t * Math.cos(th0);
-	      x3 = cx + Math.cos(th1);
-	      y3 = cy + Math.sin(th1);
-	      x2 = x3 + t * Math.sin(th1);
-	      y2 = y3 - t * Math.cos(th1);
+	      x1 = fixRoundingError(cx + Math.cos(th0) - t * Math.sin(th0));
+	      y1 = fixRoundingError(cy + Math.sin(th0) + t * Math.cos(th0));
+	      x3 = fixRoundingError(cx + Math.cos(th1));
+	      y3 = fixRoundingError(cy + Math.sin(th1));
+	      x2 = fixRoundingError(x3 + t * Math.sin(th1));
+	      y2 = fixRoundingError(y3 - t * Math.cos(th1));
 	      return [a00 * x1 + a01 * y1, a10 * x1 + a11 * y1, a00 * x2 + a01 * y2, a10 * x2 + a11 * y2, a00 * x3 + a01 * y3, a10 * x3 + a11 * y3];
+	    };
+
+	    fixRoundingError = function(x) {
+	      if (Math.abs(Math.round(x) - x) < 0.0000000000001) {
+	        return Math.round(x);
+	      }
+	      return x;
 	    };
 
 	    return SVGPath;
@@ -6202,14 +6929,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 29 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFFont;
 
-	  PDFFont = __webpack_require__(30);
+	  PDFFont = __webpack_require__(34);
 
 	  module.exports = {
 	    initFonts: function() {
@@ -6243,7 +6970,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        return this;
 	      }
 	      id = 'F' + (++this._fontCount);
-	      this._font = new PDFFont(this, src, family, id);
+	      this._font = PDFFont.open(this, src, family, id);
 	      if (font = this._fontFamilies[this._font.name]) {
 	        this._font = font;
 	        return this;
@@ -6277,265 +7004,123 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 30 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(__dirname) {// Generated by CoffeeScript 1.10.0
-
-	/*
-	PDFFont - embeds fonts in PDF documents
-	By Devon Govett
-	 */
-
+	// Generated by CoffeeScript 1.10.0
 	(function() {
-	  var AFMFont, PDFFont, Subset, TTFFont, fs;
+	  var EmbeddedFont, PDFFont, StandardFont, fontkit;
 
-	  TTFFont = __webpack_require__(31);
-
-	  AFMFont = __webpack_require__(47);
-
-	  Subset = __webpack_require__(48);
-
-	  fs = __webpack_require__(20);
+	  fontkit = __webpack_require__(35);
 
 	  PDFFont = (function() {
-	    var STANDARD_FONTS, toUnicodeCmap;
-
-	    function PDFFont(document, src, family, id) {
-	      this.document = document;
-	      this.id = id;
+	    PDFFont.open = function(document, src, family, id) {
+	      var font;
 	      if (typeof src === 'string') {
-	        if (src in STANDARD_FONTS) {
-	          this.isAFM = true;
-	          this.font = new AFMFont(STANDARD_FONTS[src]());
-	          this.registerAFM(src);
-	          return;
-	        } else if (/\.(ttf|ttc)$/i.test(src)) {
-	          this.font = TTFFont.open(src, family);
-	        } else if (/\.dfont$/i.test(src)) {
-	          this.font = TTFFont.fromDFont(src, family);
-	        } else {
-	          throw new Error('Not a supported font format or standard PDF font.');
+	        if (StandardFont.isStandardFont(src)) {
+	          return new StandardFont(document, src, id);
 	        }
+	        font = fontkit.openSync(src, family);
 	      } else if (Buffer.isBuffer(src)) {
-	        this.font = TTFFont.fromBuffer(src, family);
+	        font = fontkit.create(src, family);
 	      } else if (src instanceof Uint8Array) {
-	        this.font = TTFFont.fromBuffer(new Buffer(src), family);
+	        font = fontkit.create(new Buffer(src), family);
 	      } else if (src instanceof ArrayBuffer) {
-	        this.font = TTFFont.fromBuffer(new Buffer(new Uint8Array(src)), family);
-	      } else {
+	        font = fontkit.create(new Buffer(new Uint8Array(src)), family);
+	      }
+	      if (font == null) {
 	        throw new Error('Not a supported font format or standard PDF font.');
 	      }
-	      this.subset = new Subset(this.font);
-	      this.registerTTF();
+	      return new EmbeddedFont(document, font, id);
+	    };
+
+	    function PDFFont() {
+	      throw new Error('Cannot construct a PDFFont directly.');
 	    }
 
-	    STANDARD_FONTS = {
-	      "Courier": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Courier.afm", 'utf8');
-	      },
-	      "Courier-Bold": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Courier-Bold.afm", 'utf8');
-	      },
-	      "Courier-Oblique": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Courier-Oblique.afm", 'utf8');
-	      },
-	      "Courier-BoldOblique": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Courier-BoldOblique.afm", 'utf8');
-	      },
-	      "Helvetica": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Helvetica.afm", 'utf8');
-	      },
-	      "Helvetica-Bold": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Helvetica-Bold.afm", 'utf8');
-	      },
-	      "Helvetica-Oblique": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Helvetica-Oblique.afm", 'utf8');
-	      },
-	      "Helvetica-BoldOblique": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Helvetica-BoldOblique.afm", 'utf8');
-	      },
-	      "Times-Roman": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Times-Roman.afm", 'utf8');
-	      },
-	      "Times-Bold": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Times-Bold.afm", 'utf8');
-	      },
-	      "Times-Italic": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Times-Italic.afm", 'utf8');
-	      },
-	      "Times-BoldItalic": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Times-BoldItalic.afm", 'utf8');
-	      },
-	      "Symbol": function() {
-	        return fs.readFileSync(__dirname + "/font/data/Symbol.afm", 'utf8');
-	      },
-	      "ZapfDingbats": function() {
-	        return fs.readFileSync(__dirname + "/font/data/ZapfDingbats.afm", 'utf8');
-	      }
-	    };
-
-	    PDFFont.prototype.use = function(characters) {
-	      var ref;
-	      return (ref = this.subset) != null ? ref.use(characters) : void 0;
-	    };
-
-	    PDFFont.prototype.embed = function() {
-	      if (this.embedded || (this.dictionary == null)) {
-	        return;
-	      }
-	      if (this.isAFM) {
-	        this.embedAFM();
-	      } else {
-	        this.embedTTF();
-	      }
-	      return this.embedded = true;
-	    };
-
 	    PDFFont.prototype.encode = function(text) {
-	      var ref;
-	      if (this.isAFM) {
-	        return this.font.encodeText(text);
-	      } else {
-	        return ((ref = this.subset) != null ? ref.encodeText(text) : void 0) || text;
-	      }
+	      throw new Error('Must be implemented by subclasses');
+	    };
+
+	    PDFFont.prototype.widthOfString = function(text) {
+	      throw new Error('Must be implemented by subclasses');
 	    };
 
 	    PDFFont.prototype.ref = function() {
 	      return this.dictionary != null ? this.dictionary : this.dictionary = this.document.ref();
 	    };
 
-	    PDFFont.prototype.registerTTF = function() {
-	      var e, hi, low, raw, ref;
-	      this.name = this.font.name.postscriptName;
-	      this.scaleFactor = 1000.0 / this.font.head.unitsPerEm;
-	      this.bbox = (function() {
-	        var j, len, ref, results;
-	        ref = this.font.bbox;
-	        results = [];
-	        for (j = 0, len = ref.length; j < len; j++) {
-	          e = ref[j];
-	          results.push(Math.round(e * this.scaleFactor));
-	        }
-	        return results;
-	      }).call(this);
-	      this.stemV = 0;
-	      if (this.font.post.exists) {
-	        raw = this.font.post.italic_angle;
-	        hi = raw >> 16;
-	        low = raw & 0xFF;
-	        if (hi & 0x8000 !== 0) {
-	          hi = -((hi ^ 0xFFFF) + 1);
-	        }
-	        this.italicAngle = +(hi + "." + low);
-	      } else {
-	        this.italicAngle = 0;
+	    PDFFont.prototype.finalize = function() {
+	      if (this.embedded || (this.dictionary == null)) {
+	        return;
 	      }
-	      this.ascender = Math.round(this.font.ascender * this.scaleFactor);
-	      this.decender = Math.round(this.font.decender * this.scaleFactor);
-	      this.lineGap = Math.round(this.font.lineGap * this.scaleFactor);
-	      this.capHeight = (this.font.os2.exists && this.font.os2.capHeight) || this.ascender;
-	      this.xHeight = (this.font.os2.exists && this.font.os2.xHeight) || 0;
-	      this.familyClass = (this.font.os2.exists && this.font.os2.familyClass || 0) >> 8;
-	      this.isSerif = (ref = this.familyClass) === 1 || ref === 2 || ref === 3 || ref === 4 || ref === 5 || ref === 7;
-	      this.isScript = this.familyClass === 10;
-	      this.flags = 0;
-	      if (this.font.post.isFixedPitch) {
-	        this.flags |= 1 << 0;
-	      }
-	      if (this.isSerif) {
-	        this.flags |= 1 << 1;
-	      }
-	      if (this.isScript) {
-	        this.flags |= 1 << 3;
-	      }
-	      if (this.italicAngle !== 0) {
-	        this.flags |= 1 << 6;
-	      }
-	      this.flags |= 1 << 5;
-	      if (!this.font.cmap.unicode) {
-	        throw new Error('No unicode cmap for font');
-	      }
+	      this.embed();
+	      return this.embedded = true;
 	    };
 
-	    PDFFont.prototype.embedTTF = function() {
-	      var charWidths, cmap, code, data, descriptor, firstChar, fontfile, glyph;
-	      data = this.subset.encode();
-	      fontfile = this.document.ref();
-	      fontfile.write(data);
-	      fontfile.data.Length1 = fontfile.uncompressedLength;
-	      fontfile.end();
-	      descriptor = this.document.ref({
-	        Type: 'FontDescriptor',
-	        FontName: this.subset.postscriptName,
-	        FontFile2: fontfile,
-	        FontBBox: this.bbox,
-	        Flags: this.flags,
-	        StemV: this.stemV,
-	        ItalicAngle: this.italicAngle,
-	        Ascent: this.ascender,
-	        Descent: this.decender,
-	        CapHeight: this.capHeight,
-	        XHeight: this.xHeight
-	      });
-	      descriptor.end();
-	      firstChar = +Object.keys(this.subset.cmap)[0];
-	      charWidths = (function() {
-	        var ref, results;
-	        ref = this.subset.cmap;
-	        results = [];
-	        for (code in ref) {
-	          glyph = ref[code];
-	          results.push(Math.round(this.font.widthOfGlyph(glyph)));
-	        }
-	        return results;
-	      }).call(this);
-	      cmap = this.document.ref();
-	      cmap.end(toUnicodeCmap(this.subset.subset));
-	      this.dictionary.data = {
-	        Type: 'Font',
-	        BaseFont: this.subset.postscriptName,
-	        Subtype: 'TrueType',
-	        FontDescriptor: descriptor,
-	        FirstChar: firstChar,
-	        LastChar: firstChar + charWidths.length - 1,
-	        Widths: charWidths,
-	        Encoding: 'MacRomanEncoding',
-	        ToUnicode: cmap
-	      };
-	      return this.dictionary.end();
+	    PDFFont.prototype.embed = function() {
+	      throw new Error('Must be implemented by subclasses');
 	    };
 
-	    toUnicodeCmap = function(map) {
-	      var code, codes, j, len, range, unicode, unicodeMap;
-	      unicodeMap = '/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo <<\n  /Registry (Adobe)\n  /Ordering (UCS)\n  /Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<00><ff>\nendcodespacerange';
-	      codes = Object.keys(map).sort(function(a, b) {
-	        return a - b;
-	      });
-	      range = [];
-	      for (j = 0, len = codes.length; j < len; j++) {
-	        code = codes[j];
-	        if (range.length >= 100) {
-	          unicodeMap += "\n" + range.length + " beginbfchar\n" + (range.join('\n')) + "\nendbfchar";
-	          range = [];
-	        }
-	        unicode = ('0000' + map[code].toString(16)).slice(-4);
-	        code = (+code).toString(16);
-	        range.push("<" + code + "><" + unicode + ">");
+	    PDFFont.prototype.lineHeight = function(size, includeGap) {
+	      var gap;
+	      if (includeGap == null) {
+	        includeGap = false;
 	      }
-	      if (range.length) {
-	        unicodeMap += "\n" + range.length + " beginbfchar\n" + (range.join('\n')) + "\nendbfchar\n";
-	      }
-	      return unicodeMap += 'endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend';
+	      gap = includeGap ? this.lineGap : 0;
+	      return (this.ascender + gap - this.descender) / 1000 * size;
 	    };
 
-	    PDFFont.prototype.registerAFM = function(name) {
+	    return PDFFont;
+
+	  })();
+
+	  module.exports = PDFFont;
+
+	  StandardFont = __webpack_require__(36);
+
+	  EmbeddedFont = __webpack_require__(38);
+
+	}).call(this);
+
+
+/***/ },
+/* 35 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_35__;
+
+/***/ },
+/* 36 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(__dirname) {// Generated by CoffeeScript 1.10.0
+	(function() {
+	  var AFMFont, PDFFont, StandardFont, fs,
+	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+	    hasProp = {}.hasOwnProperty;
+
+	  AFMFont = __webpack_require__(37);
+
+	  PDFFont = __webpack_require__(34);
+
+	  fs = __webpack_require__(10);
+
+	  StandardFont = (function(superClass) {
+	    var STANDARD_FONTS;
+
+	    extend(StandardFont, superClass);
+
+	    function StandardFont(document, name1, id) {
 	      var ref;
-	      this.name = name;
-	      return ref = this.font, this.ascender = ref.ascender, this.decender = ref.decender, this.bbox = ref.bbox, this.lineGap = ref.lineGap, ref;
-	    };
+	      this.document = document;
+	      this.name = name1;
+	      this.id = id;
+	      this.font = new AFMFont(STANDARD_FONTS[this.name]());
+	      ref = this.font, this.ascender = ref.ascender, this.descender = ref.descender, this.bbox = ref.bbox, this.lineGap = ref.lineGap;
+	    }
 
-	    PDFFont.prototype.embedAFM = function() {
+	    StandardFont.prototype.embed = function() {
 	      this.dictionary.data = {
 	        Type: 'Font',
 	        BaseFont: this.name,
@@ -6545,1968 +7130,106 @@ return /******/ (function(modules) { // webpackBootstrap
 	      return this.dictionary.end();
 	    };
 
-	    PDFFont.prototype.widthOfString = function(string, size) {
-	      var charCode, i, j, ref, scale, width;
-	      string = '' + string;
+	    StandardFont.prototype.encode = function(text) {
+	      var advances, encoded, glyph, glyphs, i, j, len, positions;
+	      encoded = this.font.encodeText(text);
+	      glyphs = this.font.glyphsForString('' + text);
+	      advances = this.font.advancesForGlyphs(glyphs);
+	      positions = [];
+	      for (i = j = 0, len = glyphs.length; j < len; i = ++j) {
+	        glyph = glyphs[i];
+	        positions.push({
+	          xAdvance: advances[i],
+	          yAdvance: 0,
+	          xOffset: 0,
+	          yOffset: 0,
+	          advanceWidth: this.font.widthOfGlyph(glyph)
+	        });
+	      }
+	      return [encoded, positions];
+	    };
+
+	    StandardFont.prototype.widthOfString = function(string, size) {
+	      var advance, advances, glyphs, j, len, scale, width;
+	      glyphs = this.font.glyphsForString('' + string);
+	      advances = this.font.advancesForGlyphs(glyphs);
 	      width = 0;
-	      for (i = j = 0, ref = string.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        charCode = string.charCodeAt(i);
-	        width += this.font.widthOfGlyph(this.font.characterToGlyph(charCode)) || 0;
+	      for (j = 0, len = advances.length; j < len; j++) {
+	        advance = advances[j];
+	        width += advance;
 	      }
 	      scale = size / 1000;
 	      return width * scale;
 	    };
 
-	    PDFFont.prototype.lineHeight = function(size, includeGap) {
-	      var gap;
-	      if (includeGap == null) {
-	        includeGap = false;
-	      }
-	      gap = includeGap ? this.lineGap : 0;
-	      return (this.ascender + gap - this.decender) / 1000 * size;
+	    StandardFont.isStandardFont = function(name) {
+	      return name in STANDARD_FONTS;
 	    };
 
-	    return PDFFont;
+	    STANDARD_FONTS = {
+	      "Courier": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Courier.afm", 'utf8');
+	      },
+	      "Courier-Bold": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Courier-Bold.afm", 'utf8');
+	      },
+	      "Courier-Oblique": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Courier-Oblique.afm", 'utf8');
+	      },
+	      "Courier-BoldOblique": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Courier-BoldOblique.afm", 'utf8');
+	      },
+	      "Helvetica": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Helvetica.afm", 'utf8');
+	      },
+	      "Helvetica-Bold": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Helvetica-Bold.afm", 'utf8');
+	      },
+	      "Helvetica-Oblique": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Helvetica-Oblique.afm", 'utf8');
+	      },
+	      "Helvetica-BoldOblique": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Helvetica-BoldOblique.afm", 'utf8');
+	      },
+	      "Times-Roman": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Times-Roman.afm", 'utf8');
+	      },
+	      "Times-Bold": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Times-Bold.afm", 'utf8');
+	      },
+	      "Times-Italic": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Times-Italic.afm", 'utf8');
+	      },
+	      "Times-BoldItalic": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Times-BoldItalic.afm", 'utf8');
+	      },
+	      "Symbol": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/Symbol.afm", 'utf8');
+	      },
+	      "ZapfDingbats": function() {
+	        return fs.readFileSync(__dirname + "/../font/data/ZapfDingbats.afm", 'utf8');
+	      }
+	    };
 
-	  })();
+	    return StandardFont;
 
-	  module.exports = PDFFont;
+	  })(PDFFont);
+
+	  module.exports = StandardFont;
 
 	}).call(this);
 
 	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
 
 /***/ },
-/* 31 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var CmapTable, DFont, Data, Directory, GlyfTable, HeadTable, HheaTable, HmtxTable, LocaTable, MaxpTable, NameTable, OS2Table, PostTable, TTFFont, fs;
-
-	  fs = __webpack_require__(20);
-
-	  Data = __webpack_require__(32);
-
-	  DFont = __webpack_require__(33);
-
-	  Directory = __webpack_require__(34);
-
-	  NameTable = __webpack_require__(35);
-
-	  HeadTable = __webpack_require__(38);
-
-	  CmapTable = __webpack_require__(39);
-
-	  HmtxTable = __webpack_require__(40);
-
-	  HheaTable = __webpack_require__(41);
-
-	  MaxpTable = __webpack_require__(42);
-
-	  PostTable = __webpack_require__(43);
-
-	  OS2Table = __webpack_require__(44);
-
-	  LocaTable = __webpack_require__(45);
-
-	  GlyfTable = __webpack_require__(46);
-
-	  TTFFont = (function() {
-	    TTFFont.open = function(filename, name) {
-	      var contents;
-	      contents = fs.readFileSync(filename);
-	      return new TTFFont(contents, name);
-	    };
-
-	    TTFFont.fromDFont = function(filename, family) {
-	      var dfont;
-	      dfont = DFont.open(filename);
-	      return new TTFFont(dfont.getNamedFont(family));
-	    };
-
-	    TTFFont.fromBuffer = function(buffer, family) {
-	      var dfont, e, error, ttf;
-	      try {
-	        ttf = new TTFFont(buffer, family);
-	        if (!(ttf.head.exists && ttf.name.exists && ttf.cmap.exists)) {
-	          dfont = new DFont(buffer);
-	          ttf = new TTFFont(dfont.getNamedFont(family));
-	          if (!(ttf.head.exists && ttf.name.exists && ttf.cmap.exists)) {
-	            throw new Error('Invalid TTF file in DFont');
-	          }
-	        }
-	        return ttf;
-	      } catch (error) {
-	        e = error;
-	        throw new Error('Unknown font format in buffer: ' + e.message);
-	      }
-	    };
-
-	    function TTFFont(rawData, name) {
-	      var data, i, j, k, len, numFonts, offset, offsets, ref, version;
-	      this.rawData = rawData;
-	      data = this.contents = new Data(this.rawData);
-	      if (data.readString(4) === 'ttcf') {
-	        if (!name) {
-	          throw new Error("Must specify a font name for TTC files.");
-	        }
-	        version = data.readInt();
-	        numFonts = data.readInt();
-	        offsets = [];
-	        for (i = j = 0, ref = numFonts; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	          offsets[i] = data.readInt();
-	        }
-	        for (i = k = 0, len = offsets.length; k < len; i = ++k) {
-	          offset = offsets[i];
-	          data.pos = offset;
-	          this.parse();
-	          if (this.name.postscriptName === name) {
-	            return;
-	          }
-	        }
-	        throw new Error("Font " + name + " not found in TTC file.");
-	      } else {
-	        data.pos = 0;
-	        this.parse();
-	      }
-	    }
-
-	    TTFFont.prototype.parse = function() {
-	      this.directory = new Directory(this.contents);
-	      this.head = new HeadTable(this);
-	      this.name = new NameTable(this);
-	      this.cmap = new CmapTable(this);
-	      this.hhea = new HheaTable(this);
-	      this.maxp = new MaxpTable(this);
-	      this.hmtx = new HmtxTable(this);
-	      this.post = new PostTable(this);
-	      this.os2 = new OS2Table(this);
-	      this.loca = new LocaTable(this);
-	      this.glyf = new GlyfTable(this);
-	      this.ascender = (this.os2.exists && this.os2.ascender) || this.hhea.ascender;
-	      this.decender = (this.os2.exists && this.os2.decender) || this.hhea.decender;
-	      this.lineGap = (this.os2.exists && this.os2.lineGap) || this.hhea.lineGap;
-	      return this.bbox = [this.head.xMin, this.head.yMin, this.head.xMax, this.head.yMax];
-	    };
-
-	    TTFFont.prototype.characterToGlyph = function(character) {
-	      var ref;
-	      return ((ref = this.cmap.unicode) != null ? ref.codeMap[character] : void 0) || 0;
-	    };
-
-	    TTFFont.prototype.widthOfGlyph = function(glyph) {
-	      var scale;
-	      scale = 1000.0 / this.head.unitsPerEm;
-	      return this.hmtx.forGlyph(glyph).advance * scale;
-	    };
-
-	    return TTFFont;
-
-	  })();
-
-	  module.exports = TTFFont;
-
-	}).call(this);
-
-
-/***/ },
-/* 32 */
-/***/ function(module, exports) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data;
-
-	  Data = (function() {
-	    function Data(data) {
-	      this.data = data != null ? data : [];
-	      this.pos = 0;
-	      this.length = this.data.length;
-	    }
-
-	    Data.prototype.readByte = function() {
-	      return this.data[this.pos++];
-	    };
-
-	    Data.prototype.writeByte = function(byte) {
-	      return this.data[this.pos++] = byte;
-	    };
-
-	    Data.prototype.byteAt = function(index) {
-	      return this.data[index];
-	    };
-
-	    Data.prototype.readBool = function() {
-	      return !!this.readByte();
-	    };
-
-	    Data.prototype.writeBool = function(val) {
-	      return this.writeByte(val ? 1 : 0);
-	    };
-
-	    Data.prototype.readUInt32 = function() {
-	      var b1, b2, b3, b4;
-	      b1 = this.readByte() * 0x1000000;
-	      b2 = this.readByte() << 16;
-	      b3 = this.readByte() << 8;
-	      b4 = this.readByte();
-	      return b1 + b2 + b3 + b4;
-	    };
-
-	    Data.prototype.writeUInt32 = function(val) {
-	      this.writeByte((val >>> 24) & 0xff);
-	      this.writeByte((val >> 16) & 0xff);
-	      this.writeByte((val >> 8) & 0xff);
-	      return this.writeByte(val & 0xff);
-	    };
-
-	    Data.prototype.readInt32 = function() {
-	      var int;
-	      int = this.readUInt32();
-	      if (int >= 0x80000000) {
-	        return int - 0x100000000;
-	      } else {
-	        return int;
-	      }
-	    };
-
-	    Data.prototype.writeInt32 = function(val) {
-	      if (val < 0) {
-	        val += 0x100000000;
-	      }
-	      return this.writeUInt32(val);
-	    };
-
-	    Data.prototype.readUInt16 = function() {
-	      var b1, b2;
-	      b1 = this.readByte() << 8;
-	      b2 = this.readByte();
-	      return b1 | b2;
-	    };
-
-	    Data.prototype.writeUInt16 = function(val) {
-	      this.writeByte((val >> 8) & 0xff);
-	      return this.writeByte(val & 0xff);
-	    };
-
-	    Data.prototype.readInt16 = function() {
-	      var int;
-	      int = this.readUInt16();
-	      if (int >= 0x8000) {
-	        return int - 0x10000;
-	      } else {
-	        return int;
-	      }
-	    };
-
-	    Data.prototype.writeInt16 = function(val) {
-	      if (val < 0) {
-	        val += 0x10000;
-	      }
-	      return this.writeUInt16(val);
-	    };
-
-	    Data.prototype.readString = function(length) {
-	      var i, j, ref, ret;
-	      ret = [];
-	      for (i = j = 0, ref = length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        ret[i] = String.fromCharCode(this.readByte());
-	      }
-	      return ret.join('');
-	    };
-
-	    Data.prototype.writeString = function(val) {
-	      var i, j, ref, results;
-	      results = [];
-	      for (i = j = 0, ref = val.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        results.push(this.writeByte(val.charCodeAt(i)));
-	      }
-	      return results;
-	    };
-
-	    Data.prototype.stringAt = function(pos, length) {
-	      this.pos = pos;
-	      return this.readString(length);
-	    };
-
-	    Data.prototype.readShort = function() {
-	      return this.readInt16();
-	    };
-
-	    Data.prototype.writeShort = function(val) {
-	      return this.writeInt16(val);
-	    };
-
-	    Data.prototype.readLongLong = function() {
-	      var b1, b2, b3, b4, b5, b6, b7, b8;
-	      b1 = this.readByte();
-	      b2 = this.readByte();
-	      b3 = this.readByte();
-	      b4 = this.readByte();
-	      b5 = this.readByte();
-	      b6 = this.readByte();
-	      b7 = this.readByte();
-	      b8 = this.readByte();
-	      if (b1 & 0x80) {
-	        return ((b1 ^ 0xff) * 0x100000000000000 + (b2 ^ 0xff) * 0x1000000000000 + (b3 ^ 0xff) * 0x10000000000 + (b4 ^ 0xff) * 0x100000000 + (b5 ^ 0xff) * 0x1000000 + (b6 ^ 0xff) * 0x10000 + (b7 ^ 0xff) * 0x100 + (b8 ^ 0xff) + 1) * -1;
-	      }
-	      return b1 * 0x100000000000000 + b2 * 0x1000000000000 + b3 * 0x10000000000 + b4 * 0x100000000 + b5 * 0x1000000 + b6 * 0x10000 + b7 * 0x100 + b8;
-	    };
-
-	    Data.prototype.writeLongLong = function(val) {
-	      var high, low;
-	      high = Math.floor(val / 0x100000000);
-	      low = val & 0xffffffff;
-	      this.writeByte((high >> 24) & 0xff);
-	      this.writeByte((high >> 16) & 0xff);
-	      this.writeByte((high >> 8) & 0xff);
-	      this.writeByte(high & 0xff);
-	      this.writeByte((low >> 24) & 0xff);
-	      this.writeByte((low >> 16) & 0xff);
-	      this.writeByte((low >> 8) & 0xff);
-	      return this.writeByte(low & 0xff);
-	    };
-
-	    Data.prototype.readInt = function() {
-	      return this.readInt32();
-	    };
-
-	    Data.prototype.writeInt = function(val) {
-	      return this.writeInt32(val);
-	    };
-
-	    Data.prototype.slice = function(start, end) {
-	      return this.data.slice(start, end);
-	    };
-
-	    Data.prototype.read = function(bytes) {
-	      var buf, i, j, ref;
-	      buf = [];
-	      for (i = j = 0, ref = bytes; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        buf.push(this.readByte());
-	      }
-	      return buf;
-	    };
-
-	    Data.prototype.write = function(bytes) {
-	      var byte, j, len, results;
-	      results = [];
-	      for (j = 0, len = bytes.length; j < len; j++) {
-	        byte = bytes[j];
-	        results.push(this.writeByte(byte));
-	      }
-	      return results;
-	    };
-
-	    return Data;
-
-	  })();
-
-	  module.exports = Data;
-
-	}).call(this);
-
-
-/***/ },
-/* 33 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var DFont, Data, Directory, NameTable, fs;
-
-	  fs = __webpack_require__(20);
-
-	  Data = __webpack_require__(32);
-
-	  Directory = __webpack_require__(34);
-
-	  NameTable = __webpack_require__(35);
-
-	  DFont = (function() {
-	    DFont.open = function(filename) {
-	      var contents;
-	      contents = fs.readFileSync(filename);
-	      return new DFont(contents);
-	    };
-
-	    function DFont(contents) {
-	      this.contents = new Data(contents);
-	      this.parse(this.contents);
-	    }
-
-	    DFont.prototype.parse = function(data) {
-	      var attr, b2, b3, b4, dataLength, dataOffset, dataOfs, entry, font, handle, i, id, j, k, l, len, length, mapLength, mapOffset, maxIndex, maxTypeIndex, name, nameListOffset, nameOfs, p, pos, ref, ref1, refListOffset, type, typeListOffset;
-	      dataOffset = data.readInt();
-	      mapOffset = data.readInt();
-	      dataLength = data.readInt();
-	      mapLength = data.readInt();
-	      this.map = {};
-	      data.pos = mapOffset + 24;
-	      typeListOffset = data.readShort() + mapOffset;
-	      nameListOffset = data.readShort() + mapOffset;
-	      data.pos = typeListOffset;
-	      maxIndex = data.readShort();
-	      for (i = k = 0, ref = maxIndex; k <= ref; i = k += 1) {
-	        type = data.readString(4);
-	        maxTypeIndex = data.readShort();
-	        refListOffset = data.readShort();
-	        this.map[type] = {
-	          list: [],
-	          named: {}
-	        };
-	        pos = data.pos;
-	        data.pos = typeListOffset + refListOffset;
-	        for (j = l = 0, ref1 = maxTypeIndex; l <= ref1; j = l += 1) {
-	          id = data.readShort();
-	          nameOfs = data.readShort();
-	          attr = data.readByte();
-	          b2 = data.readByte() << 16;
-	          b3 = data.readByte() << 8;
-	          b4 = data.readByte();
-	          dataOfs = dataOffset + (0 | b2 | b3 | b4);
-	          handle = data.readUInt32();
-	          entry = {
-	            id: id,
-	            attributes: attr,
-	            offset: dataOfs,
-	            handle: handle
-	          };
-	          p = data.pos;
-	          if (nameOfs !== -1 && (nameListOffset + nameOfs < mapOffset + mapLength)) {
-	            data.pos = nameListOffset + nameOfs;
-	            len = data.readByte();
-	            entry.name = data.readString(len);
-	          } else if (type === 'sfnt') {
-	            data.pos = entry.offset;
-	            length = data.readUInt32();
-	            font = {};
-	            font.contents = new Data(data.slice(data.pos, data.pos + length));
-	            font.directory = new Directory(font.contents);
-	            name = new NameTable(font);
-	            entry.name = name.fontName[0].raw;
-	          }
-	          data.pos = p;
-	          this.map[type].list.push(entry);
-	          if (entry.name) {
-	            this.map[type].named[entry.name] = entry;
-	          }
-	        }
-	        data.pos = pos;
-	      }
-	    };
-
-	    DFont.prototype.getNamedFont = function(name) {
-	      var data, entry, length, pos, ref, ret;
-	      data = this.contents;
-	      pos = data.pos;
-	      entry = (ref = this.map.sfnt) != null ? ref.named[name] : void 0;
-	      if (!entry) {
-	        throw new Error("Font " + name + " not found in DFont file.");
-	      }
-	      data.pos = entry.offset;
-	      length = data.readUInt32();
-	      ret = data.slice(data.pos, data.pos + length);
-	      data.pos = pos;
-	      return ret;
-	    };
-
-	    return DFont;
-
-	  })();
-
-	  module.exports = DFont;
-
-	}).call(this);
-
-
-/***/ },
-/* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, Directory,
-	    slice = [].slice;
-
-	  Data = __webpack_require__(32);
-
-	  Directory = (function() {
-	    var checksum;
-
-	    function Directory(data) {
-	      var entry, i, j, ref;
-	      this.scalarType = data.readInt();
-	      this.tableCount = data.readShort();
-	      this.searchRange = data.readShort();
-	      this.entrySelector = data.readShort();
-	      this.rangeShift = data.readShort();
-	      this.tables = {};
-	      for (i = j = 0, ref = this.tableCount; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        entry = {
-	          tag: data.readString(4),
-	          checksum: data.readInt(),
-	          offset: data.readInt(),
-	          length: data.readInt()
-	        };
-	        this.tables[entry.tag] = entry;
-	      }
-	    }
-
-	    Directory.prototype.encode = function(tables) {
-	      var adjustment, directory, directoryLength, entrySelector, headOffset, log2, offset, rangeShift, searchRange, sum, table, tableCount, tableData, tag;
-	      tableCount = Object.keys(tables).length;
-	      log2 = Math.log(2);
-	      searchRange = Math.floor(Math.log(tableCount) / log2) * 16;
-	      entrySelector = Math.floor(searchRange / log2);
-	      rangeShift = tableCount * 16 - searchRange;
-	      directory = new Data;
-	      directory.writeInt(this.scalarType);
-	      directory.writeShort(tableCount);
-	      directory.writeShort(searchRange);
-	      directory.writeShort(entrySelector);
-	      directory.writeShort(rangeShift);
-	      directoryLength = tableCount * 16;
-	      offset = directory.pos + directoryLength;
-	      headOffset = null;
-	      tableData = [];
-	      for (tag in tables) {
-	        table = tables[tag];
-	        directory.writeString(tag);
-	        directory.writeInt(checksum(table));
-	        directory.writeInt(offset);
-	        directory.writeInt(table.length);
-	        tableData = tableData.concat(table);
-	        if (tag === 'head') {
-	          headOffset = offset;
-	        }
-	        offset += table.length;
-	        while (offset % 4) {
-	          tableData.push(0);
-	          offset++;
-	        }
-	      }
-	      directory.write(tableData);
-	      sum = checksum(directory.data);
-	      adjustment = 0xB1B0AFBA - sum;
-	      directory.pos = headOffset + 8;
-	      directory.writeUInt32(adjustment);
-	      return new Buffer(directory.data);
-	    };
-
-	    checksum = function(data) {
-	      var i, j, ref, sum, tmp;
-	      data = slice.call(data);
-	      while (data.length % 4) {
-	        data.push(0);
-	      }
-	      tmp = new Data(data);
-	      sum = 0;
-	      for (i = j = 0, ref = data.length; j < ref; i = j += 4) {
-	        sum += tmp.readUInt32();
-	      }
-	      return sum & 0xFFFFFFFF;
-	    };
-
-	    return Directory;
-
-	  })();
-
-	  module.exports = Directory;
-
-	}).call(this);
-
-
-/***/ },
-/* 35 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, NameEntry, NameTable, Table, utils,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  utils = __webpack_require__(37);
-
-	  NameTable = (function(superClass) {
-	    var subsetTag;
-
-	    extend(NameTable, superClass);
-
-	    function NameTable() {
-	      return NameTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    NameTable.prototype.tag = 'name';
-
-	    NameTable.prototype.parse = function(data) {
-	      var count, entries, entry, format, i, j, k, len, name, name1, ref, stringOffset, strings, text;
-	      data.pos = this.offset;
-	      format = data.readShort();
-	      count = data.readShort();
-	      stringOffset = data.readShort();
-	      entries = [];
-	      for (i = j = 0, ref = count; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        entries.push({
-	          platformID: data.readShort(),
-	          encodingID: data.readShort(),
-	          languageID: data.readShort(),
-	          nameID: data.readShort(),
-	          length: data.readShort(),
-	          offset: this.offset + stringOffset + data.readShort()
-	        });
-	      }
-	      strings = {};
-	      for (i = k = 0, len = entries.length; k < len; i = ++k) {
-	        entry = entries[i];
-	        data.pos = entry.offset;
-	        text = data.readString(entry.length);
-	        name = new NameEntry(text, entry);
-	        if (strings[name1 = entry.nameID] == null) {
-	          strings[name1] = [];
-	        }
-	        strings[entry.nameID].push(name);
-	      }
-	      this.strings = strings;
-	      this.copyright = strings[0];
-	      this.fontFamily = strings[1];
-	      this.fontSubfamily = strings[2];
-	      this.uniqueSubfamily = strings[3];
-	      this.fontName = strings[4];
-	      this.version = strings[5];
-	      this.postscriptName = strings[6][0].raw.replace(/[\x00-\x19\x80-\xff]/g, "");
-	      this.trademark = strings[7];
-	      this.manufacturer = strings[8];
-	      this.designer = strings[9];
-	      this.description = strings[10];
-	      this.vendorUrl = strings[11];
-	      this.designerUrl = strings[12];
-	      this.license = strings[13];
-	      this.licenseUrl = strings[14];
-	      this.preferredFamily = strings[15];
-	      this.preferredSubfamily = strings[17];
-	      this.compatibleFull = strings[18];
-	      return this.sampleText = strings[19];
-	    };
-
-	    subsetTag = "AAAAAA";
-
-	    NameTable.prototype.encode = function() {
-	      var id, j, len, list, nameID, nameTable, postscriptName, ref, strCount, strTable, string, strings, table, val;
-	      strings = {};
-	      ref = this.strings;
-	      for (id in ref) {
-	        val = ref[id];
-	        strings[id] = val;
-	      }
-	      postscriptName = new NameEntry(subsetTag + "+" + this.postscriptName, {
-	        platformID: 1,
-	        encodingID: 0,
-	        languageID: 0
-	      });
-	      strings[6] = [postscriptName];
-	      subsetTag = utils.successorOf(subsetTag);
-	      strCount = 0;
-	      for (id in strings) {
-	        list = strings[id];
-	        if (list != null) {
-	          strCount += list.length;
-	        }
-	      }
-	      table = new Data;
-	      strTable = new Data;
-	      table.writeShort(0);
-	      table.writeShort(strCount);
-	      table.writeShort(6 + 12 * strCount);
-	      for (nameID in strings) {
-	        list = strings[nameID];
-	        if (list != null) {
-	          for (j = 0, len = list.length; j < len; j++) {
-	            string = list[j];
-	            table.writeShort(string.platformID);
-	            table.writeShort(string.encodingID);
-	            table.writeShort(string.languageID);
-	            table.writeShort(nameID);
-	            table.writeShort(string.length);
-	            table.writeShort(strTable.pos);
-	            strTable.writeString(string.raw);
-	          }
-	        }
-	      }
-	      return nameTable = {
-	        postscriptName: postscriptName.raw,
-	        table: table.data.concat(strTable.data)
-	      };
-	    };
-
-	    return NameTable;
-
-	  })(Table);
-
-	  module.exports = NameTable;
-
-	  NameEntry = (function() {
-	    function NameEntry(raw, entry) {
-	      this.raw = raw;
-	      this.length = this.raw.length;
-	      this.platformID = entry.platformID;
-	      this.encodingID = entry.encodingID;
-	      this.languageID = entry.languageID;
-	    }
-
-	    return NameEntry;
-
-	  })();
-
-	}).call(this);
-
-
-/***/ },
-/* 36 */
-/***/ function(module, exports) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Table;
-
-	  Table = (function() {
-	    function Table(file) {
-	      var info;
-	      this.file = file;
-	      info = this.file.directory.tables[this.tag];
-	      this.exists = !!info;
-	      if (info) {
-	        this.offset = info.offset, this.length = info.length;
-	        this.parse(this.file.contents);
-	      }
-	    }
-
-	    Table.prototype.parse = function() {};
-
-	    Table.prototype.encode = function() {};
-
-	    Table.prototype.raw = function() {
-	      if (!this.exists) {
-	        return null;
-	      }
-	      this.file.contents.pos = this.offset;
-	      return this.file.contents.read(this.length);
-	    };
-
-	    return Table;
-
-	  })();
-
-	  module.exports = Table;
-
-	}).call(this);
-
-
-/***/ },
 /* 37 */
-/***/ function(module, exports) {
-
-	// Generated by CoffeeScript 1.10.0
-
-	/*
-	 * An implementation of Ruby's string.succ method.
-	 * By Devon Govett
-	 *
-	 * Returns the successor to str. The successor is calculated by incrementing characters starting 
-	 * from the rightmost alphanumeric (or the rightmost character if there are no alphanumerics) in the
-	 * string. Incrementing a digit always results in another digit, and incrementing a letter results in
-	 * another letter of the same case.
-	 *
-	 * If the increment generates a carry, the character to the left of it is incremented. This 
-	 * process repeats until there is no carry, adding an additional character if necessary.
-	 *
-	 * succ("abcd")      == "abce"
-	 * succ("THX1138")   == "THX1139"
-	 * succ("<<koala>>") == "<<koalb>>"
-	 * succ("1999zzz")   == "2000aaa"
-	 * succ("ZZZ9999")   == "AAAA0000"
-	 */
-
-	(function() {
-	  exports.successorOf = function(input) {
-	    var added, alphabet, carry, i, index, isUpperCase, last, length, next, result;
-	    alphabet = 'abcdefghijklmnopqrstuvwxyz';
-	    length = alphabet.length;
-	    result = input;
-	    i = input.length;
-	    while (i >= 0) {
-	      last = input.charAt(--i);
-	      if (isNaN(last)) {
-	        index = alphabet.indexOf(last.toLowerCase());
-	        if (index === -1) {
-	          next = last;
-	          carry = true;
-	        } else {
-	          next = alphabet.charAt((index + 1) % length);
-	          isUpperCase = last === last.toUpperCase();
-	          if (isUpperCase) {
-	            next = next.toUpperCase();
-	          }
-	          carry = index + 1 >= length;
-	          if (carry && i === 0) {
-	            added = isUpperCase ? 'A' : 'a';
-	            result = added + next + result.slice(1);
-	            break;
-	          }
-	        }
-	      } else {
-	        next = +last + 1;
-	        carry = next > 9;
-	        if (carry) {
-	          next = 0;
-	        }
-	        if (carry && i === 0) {
-	          result = '1' + next + result.slice(1);
-	          break;
-	        }
-	      }
-	      result = result.slice(0, i) + next + result.slice(i + 1);
-	      if (!carry) {
-	        break;
-	      }
-	    }
-	    return result;
-	  };
-
-	  exports.invert = function(object) {
-	    var key, ret, val;
-	    ret = {};
-	    for (key in object) {
-	      val = object[key];
-	      ret[val] = key;
-	    }
-	    return ret;
-	  };
-
-	}).call(this);
-
-
-/***/ },
-/* 38 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, HeadTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  HeadTable = (function(superClass) {
-	    extend(HeadTable, superClass);
-
-	    function HeadTable() {
-	      return HeadTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    HeadTable.prototype.tag = 'head';
-
-	    HeadTable.prototype.parse = function(data) {
-	      data.pos = this.offset;
-	      this.version = data.readInt();
-	      this.revision = data.readInt();
-	      this.checkSumAdjustment = data.readInt();
-	      this.magicNumber = data.readInt();
-	      this.flags = data.readShort();
-	      this.unitsPerEm = data.readShort();
-	      this.created = data.readLongLong();
-	      this.modified = data.readLongLong();
-	      this.xMin = data.readShort();
-	      this.yMin = data.readShort();
-	      this.xMax = data.readShort();
-	      this.yMax = data.readShort();
-	      this.macStyle = data.readShort();
-	      this.lowestRecPPEM = data.readShort();
-	      this.fontDirectionHint = data.readShort();
-	      this.indexToLocFormat = data.readShort();
-	      return this.glyphDataFormat = data.readShort();
-	    };
-
-	    HeadTable.prototype.encode = function(loca) {
-	      var table;
-	      table = new Data;
-	      table.writeInt(this.version);
-	      table.writeInt(this.revision);
-	      table.writeInt(this.checkSumAdjustment);
-	      table.writeInt(this.magicNumber);
-	      table.writeShort(this.flags);
-	      table.writeShort(this.unitsPerEm);
-	      table.writeLongLong(this.created);
-	      table.writeLongLong(this.modified);
-	      table.writeShort(this.xMin);
-	      table.writeShort(this.yMin);
-	      table.writeShort(this.xMax);
-	      table.writeShort(this.yMax);
-	      table.writeShort(this.macStyle);
-	      table.writeShort(this.lowestRecPPEM);
-	      table.writeShort(this.fontDirectionHint);
-	      table.writeShort(loca.type);
-	      table.writeShort(this.glyphDataFormat);
-	      return table.data;
-	    };
-
-	    return HeadTable;
-
-	  })(Table);
-
-	  module.exports = HeadTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 39 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var CmapEntry, CmapTable, Data, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  CmapTable = (function(superClass) {
-	    extend(CmapTable, superClass);
-
-	    function CmapTable() {
-	      return CmapTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    CmapTable.prototype.tag = 'cmap';
-
-	    CmapTable.prototype.parse = function(data) {
-	      var entry, i, j, ref, tableCount;
-	      data.pos = this.offset;
-	      this.version = data.readUInt16();
-	      tableCount = data.readUInt16();
-	      this.tables = [];
-	      this.unicode = null;
-	      for (i = j = 0, ref = tableCount; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        entry = new CmapEntry(data, this.offset);
-	        this.tables.push(entry);
-	        if (entry.isUnicode) {
-	          if (this.unicode == null) {
-	            this.unicode = entry;
-	          }
-	        }
-	      }
-	      return true;
-	    };
-
-	    CmapTable.encode = function(charmap, encoding) {
-	      var result, table;
-	      if (encoding == null) {
-	        encoding = 'macroman';
-	      }
-	      result = CmapEntry.encode(charmap, encoding);
-	      table = new Data;
-	      table.writeUInt16(0);
-	      table.writeUInt16(1);
-	      result.table = table.data.concat(result.subtable);
-	      return result;
-	    };
-
-	    return CmapTable;
-
-	  })(Table);
-
-	  CmapEntry = (function() {
-	    function CmapEntry(data, offset) {
-	      var code, count, endCode, glyphId, glyphIds, i, idDelta, idRangeOffset, index, j, k, l, len, ref, ref1, saveOffset, segCount, segCountX2, start, startCode, tail;
-	      this.platformID = data.readUInt16();
-	      this.encodingID = data.readShort();
-	      this.offset = offset + data.readInt();
-	      saveOffset = data.pos;
-	      data.pos = this.offset;
-	      this.format = data.readUInt16();
-	      this.length = data.readUInt16();
-	      this.language = data.readUInt16();
-	      this.isUnicode = (this.platformID === 3 && this.encodingID === 1 && this.format === 4) || this.platformID === 0 && this.format === 4;
-	      this.codeMap = {};
-	      switch (this.format) {
-	        case 0:
-	          for (i = j = 0; j < 256; i = ++j) {
-	            this.codeMap[i] = data.readByte();
-	          }
-	          break;
-	        case 4:
-	          segCountX2 = data.readUInt16();
-	          segCount = segCountX2 / 2;
-	          data.pos += 6;
-	          endCode = (function() {
-	            var k, ref, results;
-	            results = [];
-	            for (i = k = 0, ref = segCount; 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
-	              results.push(data.readUInt16());
-	            }
-	            return results;
-	          })();
-	          data.pos += 2;
-	          startCode = (function() {
-	            var k, ref, results;
-	            results = [];
-	            for (i = k = 0, ref = segCount; 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
-	              results.push(data.readUInt16());
-	            }
-	            return results;
-	          })();
-	          idDelta = (function() {
-	            var k, ref, results;
-	            results = [];
-	            for (i = k = 0, ref = segCount; 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
-	              results.push(data.readUInt16());
-	            }
-	            return results;
-	          })();
-	          idRangeOffset = (function() {
-	            var k, ref, results;
-	            results = [];
-	            for (i = k = 0, ref = segCount; 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
-	              results.push(data.readUInt16());
-	            }
-	            return results;
-	          })();
-	          count = (this.length - data.pos + this.offset) / 2;
-	          glyphIds = (function() {
-	            var k, ref, results;
-	            results = [];
-	            for (i = k = 0, ref = count; 0 <= ref ? k < ref : k > ref; i = 0 <= ref ? ++k : --k) {
-	              results.push(data.readUInt16());
-	            }
-	            return results;
-	          })();
-	          for (i = k = 0, len = endCode.length; k < len; i = ++k) {
-	            tail = endCode[i];
-	            start = startCode[i];
-	            for (code = l = ref = start, ref1 = tail; ref <= ref1 ? l <= ref1 : l >= ref1; code = ref <= ref1 ? ++l : --l) {
-	              if (idRangeOffset[i] === 0) {
-	                glyphId = code + idDelta[i];
-	              } else {
-	                index = idRangeOffset[i] / 2 + (code - start) - (segCount - i);
-	                glyphId = glyphIds[index] || 0;
-	                if (glyphId !== 0) {
-	                  glyphId += idDelta[i];
-	                }
-	              }
-	              this.codeMap[code] = glyphId & 0xFFFF;
-	            }
-	          }
-	      }
-	      data.pos = saveOffset;
-	    }
-
-	    CmapEntry.encode = function(charmap, encoding) {
-	      var charMap, code, codeMap, codes, delta, deltas, diff, endCode, endCodes, entrySelector, glyphIDs, i, id, indexes, j, k, l, last, len, len1, len2, len3, len4, len5, len6, len7, m, map, n, name, nextID, o, offset, old, p, q, r, rangeOffsets, rangeShift, ref, ref1, result, searchRange, segCount, segCountX2, startCode, startCodes, startGlyph, subtable;
-	      subtable = new Data;
-	      codes = Object.keys(charmap).sort(function(a, b) {
-	        return a - b;
-	      });
-	      switch (encoding) {
-	        case 'macroman':
-	          id = 0;
-	          indexes = (function() {
-	            var j, results;
-	            results = [];
-	            for (i = j = 0; j < 256; i = ++j) {
-	              results.push(0);
-	            }
-	            return results;
-	          })();
-	          map = {
-	            0: 0
-	          };
-	          codeMap = {};
-	          for (j = 0, len = codes.length; j < len; j++) {
-	            code = codes[j];
-	            if (map[name = charmap[code]] == null) {
-	              map[name] = ++id;
-	            }
-	            codeMap[code] = {
-	              old: charmap[code],
-	              "new": map[charmap[code]]
-	            };
-	            indexes[code] = map[charmap[code]];
-	          }
-	          subtable.writeUInt16(1);
-	          subtable.writeUInt16(0);
-	          subtable.writeUInt32(12);
-	          subtable.writeUInt16(0);
-	          subtable.writeUInt16(262);
-	          subtable.writeUInt16(0);
-	          subtable.write(indexes);
-	          return result = {
-	            charMap: codeMap,
-	            subtable: subtable.data,
-	            maxGlyphID: id + 1
-	          };
-	        case 'unicode':
-	          startCodes = [];
-	          endCodes = [];
-	          nextID = 0;
-	          map = {};
-	          charMap = {};
-	          last = diff = null;
-	          for (k = 0, len1 = codes.length; k < len1; k++) {
-	            code = codes[k];
-	            old = charmap[code];
-	            if (map[old] == null) {
-	              map[old] = ++nextID;
-	            }
-	            charMap[code] = {
-	              old: old,
-	              "new": map[old]
-	            };
-	            delta = map[old] - code;
-	            if ((last == null) || delta !== diff) {
-	              if (last) {
-	                endCodes.push(last);
-	              }
-	              startCodes.push(code);
-	              diff = delta;
-	            }
-	            last = code;
-	          }
-	          if (last) {
-	            endCodes.push(last);
-	          }
-	          endCodes.push(0xFFFF);
-	          startCodes.push(0xFFFF);
-	          segCount = startCodes.length;
-	          segCountX2 = segCount * 2;
-	          searchRange = 2 * Math.pow(Math.log(segCount) / Math.LN2, 2);
-	          entrySelector = Math.log(searchRange / 2) / Math.LN2;
-	          rangeShift = 2 * segCount - searchRange;
-	          deltas = [];
-	          rangeOffsets = [];
-	          glyphIDs = [];
-	          for (i = l = 0, len2 = startCodes.length; l < len2; i = ++l) {
-	            startCode = startCodes[i];
-	            endCode = endCodes[i];
-	            if (startCode === 0xFFFF) {
-	              deltas.push(0);
-	              rangeOffsets.push(0);
-	              break;
-	            }
-	            startGlyph = charMap[startCode]["new"];
-	            if (startCode - startGlyph >= 0x8000) {
-	              deltas.push(0);
-	              rangeOffsets.push(2 * (glyphIDs.length + segCount - i));
-	              for (code = m = ref = startCode, ref1 = endCode; ref <= ref1 ? m <= ref1 : m >= ref1; code = ref <= ref1 ? ++m : --m) {
-	                glyphIDs.push(charMap[code]["new"]);
-	              }
-	            } else {
-	              deltas.push(startGlyph - startCode);
-	              rangeOffsets.push(0);
-	            }
-	          }
-	          subtable.writeUInt16(3);
-	          subtable.writeUInt16(1);
-	          subtable.writeUInt32(12);
-	          subtable.writeUInt16(4);
-	          subtable.writeUInt16(16 + segCount * 8 + glyphIDs.length * 2);
-	          subtable.writeUInt16(0);
-	          subtable.writeUInt16(segCountX2);
-	          subtable.writeUInt16(searchRange);
-	          subtable.writeUInt16(entrySelector);
-	          subtable.writeUInt16(rangeShift);
-	          for (n = 0, len3 = endCodes.length; n < len3; n++) {
-	            code = endCodes[n];
-	            subtable.writeUInt16(code);
-	          }
-	          subtable.writeUInt16(0);
-	          for (o = 0, len4 = startCodes.length; o < len4; o++) {
-	            code = startCodes[o];
-	            subtable.writeUInt16(code);
-	          }
-	          for (p = 0, len5 = deltas.length; p < len5; p++) {
-	            delta = deltas[p];
-	            subtable.writeUInt16(delta);
-	          }
-	          for (q = 0, len6 = rangeOffsets.length; q < len6; q++) {
-	            offset = rangeOffsets[q];
-	            subtable.writeUInt16(offset);
-	          }
-	          for (r = 0, len7 = glyphIDs.length; r < len7; r++) {
-	            id = glyphIDs[r];
-	            subtable.writeUInt16(id);
-	          }
-	          return result = {
-	            charMap: charMap,
-	            subtable: subtable.data,
-	            maxGlyphID: nextID + 1
-	          };
-	      }
-	    };
-
-	    return CmapEntry;
-
-	  })();
-
-	  module.exports = CmapTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 40 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, HmtxTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  HmtxTable = (function(superClass) {
-	    extend(HmtxTable, superClass);
-
-	    function HmtxTable() {
-	      return HmtxTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    HmtxTable.prototype.tag = 'hmtx';
-
-	    HmtxTable.prototype.parse = function(data) {
-	      var i, j, k, last, lsbCount, m, ref, ref1, results;
-	      data.pos = this.offset;
-	      this.metrics = [];
-	      for (i = j = 0, ref = this.file.hhea.numberOfMetrics; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        this.metrics.push({
-	          advance: data.readUInt16(),
-	          lsb: data.readInt16()
-	        });
-	      }
-	      lsbCount = this.file.maxp.numGlyphs - this.file.hhea.numberOfMetrics;
-	      this.leftSideBearings = (function() {
-	        var k, ref1, results;
-	        results = [];
-	        for (i = k = 0, ref1 = lsbCount; 0 <= ref1 ? k < ref1 : k > ref1; i = 0 <= ref1 ? ++k : --k) {
-	          results.push(data.readInt16());
-	        }
-	        return results;
-	      })();
-	      this.widths = (function() {
-	        var k, len, ref1, results;
-	        ref1 = this.metrics;
-	        results = [];
-	        for (k = 0, len = ref1.length; k < len; k++) {
-	          m = ref1[k];
-	          results.push(m.advance);
-	        }
-	        return results;
-	      }).call(this);
-	      last = this.widths[this.widths.length - 1];
-	      results = [];
-	      for (i = k = 0, ref1 = lsbCount; 0 <= ref1 ? k < ref1 : k > ref1; i = 0 <= ref1 ? ++k : --k) {
-	        results.push(this.widths.push(last));
-	      }
-	      return results;
-	    };
-
-	    HmtxTable.prototype.forGlyph = function(id) {
-	      var metrics;
-	      if (id in this.metrics) {
-	        return this.metrics[id];
-	      }
-	      return metrics = {
-	        advance: this.metrics[this.metrics.length - 1].advance,
-	        lsb: this.leftSideBearings[id - this.metrics.length]
-	      };
-	    };
-
-	    HmtxTable.prototype.encode = function(mapping) {
-	      var id, j, len, metric, table;
-	      table = new Data;
-	      for (j = 0, len = mapping.length; j < len; j++) {
-	        id = mapping[j];
-	        metric = this.forGlyph(id);
-	        table.writeUInt16(metric.advance);
-	        table.writeUInt16(metric.lsb);
-	      }
-	      return table.data;
-	    };
-
-	    return HmtxTable;
-
-	  })(Table);
-
-	  module.exports = HmtxTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 41 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, HheaTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  HheaTable = (function(superClass) {
-	    extend(HheaTable, superClass);
-
-	    function HheaTable() {
-	      return HheaTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    HheaTable.prototype.tag = 'hhea';
-
-	    HheaTable.prototype.parse = function(data) {
-	      data.pos = this.offset;
-	      this.version = data.readInt();
-	      this.ascender = data.readShort();
-	      this.decender = data.readShort();
-	      this.lineGap = data.readShort();
-	      this.advanceWidthMax = data.readShort();
-	      this.minLeftSideBearing = data.readShort();
-	      this.minRightSideBearing = data.readShort();
-	      this.xMaxExtent = data.readShort();
-	      this.caretSlopeRise = data.readShort();
-	      this.caretSlopeRun = data.readShort();
-	      this.caretOffset = data.readShort();
-	      data.pos += 4 * 2;
-	      this.metricDataFormat = data.readShort();
-	      return this.numberOfMetrics = data.readUInt16();
-	    };
-
-	    HheaTable.prototype.encode = function(ids) {
-	      var i, j, ref, table;
-	      table = new Data;
-	      table.writeInt(this.version);
-	      table.writeShort(this.ascender);
-	      table.writeShort(this.decender);
-	      table.writeShort(this.lineGap);
-	      table.writeShort(this.advanceWidthMax);
-	      table.writeShort(this.minLeftSideBearing);
-	      table.writeShort(this.minRightSideBearing);
-	      table.writeShort(this.xMaxExtent);
-	      table.writeShort(this.caretSlopeRise);
-	      table.writeShort(this.caretSlopeRun);
-	      table.writeShort(this.caretOffset);
-	      for (i = j = 0, ref = 4 * 2; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        table.writeByte(0);
-	      }
-	      table.writeShort(this.metricDataFormat);
-	      table.writeUInt16(ids.length);
-	      return table.data;
-	    };
-
-	    return HheaTable;
-
-	  })(Table);
-
-	  module.exports = HheaTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 42 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, MaxpTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  MaxpTable = (function(superClass) {
-	    extend(MaxpTable, superClass);
-
-	    function MaxpTable() {
-	      return MaxpTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    MaxpTable.prototype.tag = 'maxp';
-
-	    MaxpTable.prototype.parse = function(data) {
-	      data.pos = this.offset;
-	      this.version = data.readInt();
-	      this.numGlyphs = data.readUInt16();
-	      this.maxPoints = data.readUInt16();
-	      this.maxContours = data.readUInt16();
-	      this.maxCompositePoints = data.readUInt16();
-	      this.maxComponentContours = data.readUInt16();
-	      this.maxZones = data.readUInt16();
-	      this.maxTwilightPoints = data.readUInt16();
-	      this.maxStorage = data.readUInt16();
-	      this.maxFunctionDefs = data.readUInt16();
-	      this.maxInstructionDefs = data.readUInt16();
-	      this.maxStackElements = data.readUInt16();
-	      this.maxSizeOfInstructions = data.readUInt16();
-	      this.maxComponentElements = data.readUInt16();
-	      return this.maxComponentDepth = data.readUInt16();
-	    };
-
-	    MaxpTable.prototype.encode = function(ids) {
-	      var table;
-	      table = new Data;
-	      table.writeInt(this.version);
-	      table.writeUInt16(ids.length);
-	      table.writeUInt16(this.maxPoints);
-	      table.writeUInt16(this.maxContours);
-	      table.writeUInt16(this.maxCompositePoints);
-	      table.writeUInt16(this.maxComponentContours);
-	      table.writeUInt16(this.maxZones);
-	      table.writeUInt16(this.maxTwilightPoints);
-	      table.writeUInt16(this.maxStorage);
-	      table.writeUInt16(this.maxFunctionDefs);
-	      table.writeUInt16(this.maxInstructionDefs);
-	      table.writeUInt16(this.maxStackElements);
-	      table.writeUInt16(this.maxSizeOfInstructions);
-	      table.writeUInt16(this.maxComponentElements);
-	      table.writeUInt16(this.maxComponentDepth);
-	      return table.data;
-	    };
-
-	    return MaxpTable;
-
-	  })(Table);
-
-	  module.exports = MaxpTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 43 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, PostTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  PostTable = (function(superClass) {
-	    var POSTSCRIPT_GLYPHS;
-
-	    extend(PostTable, superClass);
-
-	    function PostTable() {
-	      return PostTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    PostTable.prototype.tag = 'post';
-
-	    PostTable.prototype.parse = function(data) {
-	      var i, j, length, numberOfGlyphs, ref, results;
-	      data.pos = this.offset;
-	      this.format = data.readInt();
-	      this.italicAngle = data.readInt();
-	      this.underlinePosition = data.readShort();
-	      this.underlineThickness = data.readShort();
-	      this.isFixedPitch = data.readInt();
-	      this.minMemType42 = data.readInt();
-	      this.maxMemType42 = data.readInt();
-	      this.minMemType1 = data.readInt();
-	      this.maxMemType1 = data.readInt();
-	      switch (this.format) {
-	        case 0x00010000:
-	          break;
-	        case 0x00020000:
-	          numberOfGlyphs = data.readUInt16();
-	          this.glyphNameIndex = [];
-	          for (i = j = 0, ref = numberOfGlyphs; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	            this.glyphNameIndex.push(data.readUInt16());
-	          }
-	          this.names = [];
-	          results = [];
-	          while (data.pos < this.offset + this.length) {
-	            length = data.readByte();
-	            results.push(this.names.push(data.readString(length)));
-	          }
-	          return results;
-	          break;
-	        case 0x00025000:
-	          numberOfGlyphs = data.readUInt16();
-	          return this.offsets = data.read(numberOfGlyphs);
-	        case 0x00030000:
-	          break;
-	        case 0x00040000:
-	          return this.map = (function() {
-	            var k, ref1, results1;
-	            results1 = [];
-	            for (i = k = 0, ref1 = this.file.maxp.numGlyphs; 0 <= ref1 ? k < ref1 : k > ref1; i = 0 <= ref1 ? ++k : --k) {
-	              results1.push(data.readUInt32());
-	            }
-	            return results1;
-	          }).call(this);
-	      }
-	    };
-
-	    PostTable.prototype.glyphFor = function(code) {
-	      var index;
-	      switch (this.format) {
-	        case 0x00010000:
-	          return POSTSCRIPT_GLYPHS[code] || '.notdef';
-	        case 0x00020000:
-	          index = this.glyphNameIndex[code];
-	          if (index <= 257) {
-	            return POSTSCRIPT_GLYPHS[index];
-	          } else {
-	            return this.names[index - 258] || '.notdef';
-	          }
-	          break;
-	        case 0x00025000:
-	          return POSTSCRIPT_GLYPHS[code + this.offsets[code]] || '.notdef';
-	        case 0x00030000:
-	          return '.notdef';
-	        case 0x00040000:
-	          return this.map[code] || 0xFFFF;
-	      }
-	    };
-
-	    PostTable.prototype.encode = function(mapping) {
-	      var id, index, indexes, j, k, l, len, len1, len2, position, post, raw, string, strings, table;
-	      if (!this.exists) {
-	        return null;
-	      }
-	      raw = this.raw();
-	      if (this.format === 0x00030000) {
-	        return raw;
-	      }
-	      table = new Data(raw.slice(0, 32));
-	      table.writeUInt32(0x00020000);
-	      table.pos = 32;
-	      indexes = [];
-	      strings = [];
-	      for (j = 0, len = mapping.length; j < len; j++) {
-	        id = mapping[j];
-	        post = this.glyphFor(id);
-	        position = POSTSCRIPT_GLYPHS.indexOf(post);
-	        if (position !== -1) {
-	          indexes.push(position);
-	        } else {
-	          indexes.push(257 + strings.length);
-	          strings.push(post);
-	        }
-	      }
-	      table.writeUInt16(Object.keys(mapping).length);
-	      for (k = 0, len1 = indexes.length; k < len1; k++) {
-	        index = indexes[k];
-	        table.writeUInt16(index);
-	      }
-	      for (l = 0, len2 = strings.length; l < len2; l++) {
-	        string = strings[l];
-	        table.writeByte(string.length);
-	        table.writeString(string);
-	      }
-	      return table.data;
-	    };
-
-	    POSTSCRIPT_GLYPHS = '.notdef .null nonmarkingreturn space exclam quotedbl numbersign dollar percent\nampersand quotesingle parenleft parenright asterisk plus comma hyphen period slash\nzero one two three four five six seven eight nine colon semicolon less equal greater\nquestion at A B C D E F G H I J K L M N O P Q R S T U V W X Y Z\nbracketleft backslash bracketright asciicircum underscore grave\na b c d e f g h i j k l m n o p q r s t u v w x y z\nbraceleft bar braceright asciitilde Adieresis Aring Ccedilla Eacute Ntilde Odieresis\nUdieresis aacute agrave acircumflex adieresis atilde aring ccedilla eacute egrave\necircumflex edieresis iacute igrave icircumflex idieresis ntilde oacute ograve\nocircumflex odieresis otilde uacute ugrave ucircumflex udieresis dagger degree cent\nsterling section bullet paragraph germandbls registered copyright trademark acute\ndieresis notequal AE Oslash infinity plusminus lessequal greaterequal yen mu\npartialdiff summation product pi integral ordfeminine ordmasculine Omega ae oslash\nquestiondown exclamdown logicalnot radical florin approxequal Delta guillemotleft\nguillemotright ellipsis nonbreakingspace Agrave Atilde Otilde OE oe endash emdash\nquotedblleft quotedblright quoteleft quoteright divide lozenge ydieresis Ydieresis\nfraction currency guilsinglleft guilsinglright fi fl daggerdbl periodcentered\nquotesinglbase quotedblbase perthousand Acircumflex Ecircumflex Aacute Edieresis\nEgrave Iacute Icircumflex Idieresis Igrave Oacute Ocircumflex apple Ograve Uacute\nUcircumflex Ugrave dotlessi circumflex tilde macron breve dotaccent ring cedilla\nhungarumlaut ogonek caron Lslash lslash Scaron scaron Zcaron zcaron brokenbar Eth\neth Yacute yacute Thorn thorn minus multiply onesuperior twosuperior threesuperior\nonehalf onequarter threequarters franc Gbreve gbreve Idotaccent Scedilla scedilla\nCacute cacute Ccaron ccaron dcroat'.split(/\s+/g);
-
-	    return PostTable;
-
-	  })(Table);
-
-	  module.exports = PostTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 44 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var OS2Table, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  OS2Table = (function(superClass) {
-	    extend(OS2Table, superClass);
-
-	    function OS2Table() {
-	      return OS2Table.__super__.constructor.apply(this, arguments);
-	    }
-
-	    OS2Table.prototype.tag = 'OS/2';
-
-	    OS2Table.prototype.parse = function(data) {
-	      var i;
-	      data.pos = this.offset;
-	      this.version = data.readUInt16();
-	      this.averageCharWidth = data.readShort();
-	      this.weightClass = data.readUInt16();
-	      this.widthClass = data.readUInt16();
-	      this.type = data.readShort();
-	      this.ySubscriptXSize = data.readShort();
-	      this.ySubscriptYSize = data.readShort();
-	      this.ySubscriptXOffset = data.readShort();
-	      this.ySubscriptYOffset = data.readShort();
-	      this.ySuperscriptXSize = data.readShort();
-	      this.ySuperscriptYSize = data.readShort();
-	      this.ySuperscriptXOffset = data.readShort();
-	      this.ySuperscriptYOffset = data.readShort();
-	      this.yStrikeoutSize = data.readShort();
-	      this.yStrikeoutPosition = data.readShort();
-	      this.familyClass = data.readShort();
-	      this.panose = (function() {
-	        var j, results;
-	        results = [];
-	        for (i = j = 0; j < 10; i = ++j) {
-	          results.push(data.readByte());
-	        }
-	        return results;
-	      })();
-	      this.charRange = (function() {
-	        var j, results;
-	        results = [];
-	        for (i = j = 0; j < 4; i = ++j) {
-	          results.push(data.readInt());
-	        }
-	        return results;
-	      })();
-	      this.vendorID = data.readString(4);
-	      this.selection = data.readShort();
-	      this.firstCharIndex = data.readShort();
-	      this.lastCharIndex = data.readShort();
-	      if (this.version > 0) {
-	        this.ascent = data.readShort();
-	        this.descent = data.readShort();
-	        this.lineGap = data.readShort();
-	        this.winAscent = data.readShort();
-	        this.winDescent = data.readShort();
-	        this.codePageRange = (function() {
-	          var j, results;
-	          results = [];
-	          for (i = j = 0; j < 2; i = ++j) {
-	            results.push(data.readInt());
-	          }
-	          return results;
-	        })();
-	        if (this.version > 1) {
-	          this.xHeight = data.readShort();
-	          this.capHeight = data.readShort();
-	          this.defaultChar = data.readShort();
-	          this.breakChar = data.readShort();
-	          return this.maxContext = data.readShort();
-	        }
-	      }
-	    };
-
-	    OS2Table.prototype.encode = function() {
-	      return this.raw();
-	    };
-
-	    return OS2Table;
-
-	  })(Table);
-
-	  module.exports = OS2Table;
-
-	}).call(this);
-
-
-/***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var Data, LocaTable, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  LocaTable = (function(superClass) {
-	    extend(LocaTable, superClass);
-
-	    function LocaTable() {
-	      return LocaTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    LocaTable.prototype.tag = 'loca';
-
-	    LocaTable.prototype.parse = function(data) {
-	      var format, i;
-	      data.pos = this.offset;
-	      format = this.file.head.indexToLocFormat;
-	      if (format === 0) {
-	        return this.offsets = (function() {
-	          var j, ref, results;
-	          results = [];
-	          for (i = j = 0, ref = this.length; j < ref; i = j += 2) {
-	            results.push(data.readUInt16() * 2);
-	          }
-	          return results;
-	        }).call(this);
-	      } else {
-	        return this.offsets = (function() {
-	          var j, ref, results;
-	          results = [];
-	          for (i = j = 0, ref = this.length; j < ref; i = j += 4) {
-	            results.push(data.readUInt32());
-	          }
-	          return results;
-	        }).call(this);
-	      }
-	    };
-
-	    LocaTable.prototype.indexOf = function(id) {
-	      return this.offsets[id];
-	    };
-
-	    LocaTable.prototype.lengthOf = function(id) {
-	      return this.offsets[id + 1] - this.offsets[id];
-	    };
-
-	    LocaTable.prototype.encode = function(offsets) {
-	      var j, k, l, len, len1, len2, o, offset, ref, ret, table;
-	      table = new Data;
-	      for (j = 0, len = offsets.length; j < len; j++) {
-	        offset = offsets[j];
-	        if (!(offset > 0xFFFF)) {
-	          continue;
-	        }
-	        ref = this.offsets;
-	        for (k = 0, len1 = ref.length; k < len1; k++) {
-	          o = ref[k];
-	          table.writeUInt32(o);
-	        }
-	        return ret = {
-	          format: 1,
-	          table: table.data
-	        };
-	      }
-	      for (l = 0, len2 = offsets.length; l < len2; l++) {
-	        o = offsets[l];
-	        table.writeUInt16(o / 2);
-	      }
-	      return ret = {
-	        format: 0,
-	        table: table.data
-	      };
-	    };
-
-	    return LocaTable;
-
-	  })(Table);
-
-	  module.exports = LocaTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// Generated by CoffeeScript 1.10.0
-	(function() {
-	  var CompoundGlyph, Data, GlyfTable, SimpleGlyph, Table,
-	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	    hasProp = {}.hasOwnProperty,
-	    slice = [].slice;
-
-	  Table = __webpack_require__(36);
-
-	  Data = __webpack_require__(32);
-
-	  GlyfTable = (function(superClass) {
-	    extend(GlyfTable, superClass);
-
-	    function GlyfTable() {
-	      return GlyfTable.__super__.constructor.apply(this, arguments);
-	    }
-
-	    GlyfTable.prototype.tag = 'glyf';
-
-	    GlyfTable.prototype.parse = function(data) {
-	      return this.cache = {};
-	    };
-
-	    GlyfTable.prototype.glyphFor = function(id) {
-	      var data, index, length, loca, numberOfContours, raw, xMax, xMin, yMax, yMin;
-	      if (id in this.cache) {
-	        return this.cache[id];
-	      }
-	      loca = this.file.loca;
-	      data = this.file.contents;
-	      index = loca.indexOf(id);
-	      length = loca.lengthOf(id);
-	      if (length === 0) {
-	        return this.cache[id] = null;
-	      }
-	      data.pos = this.offset + index;
-	      raw = new Data(data.read(length));
-	      numberOfContours = raw.readShort();
-	      xMin = raw.readShort();
-	      yMin = raw.readShort();
-	      xMax = raw.readShort();
-	      yMax = raw.readShort();
-	      if (numberOfContours === -1) {
-	        this.cache[id] = new CompoundGlyph(raw, xMin, yMin, xMax, yMax);
-	      } else {
-	        this.cache[id] = new SimpleGlyph(raw, numberOfContours, xMin, yMin, xMax, yMax);
-	      }
-	      return this.cache[id];
-	    };
-
-	    GlyfTable.prototype.encode = function(glyphs, mapping, old2new) {
-	      var glyph, id, j, len, offsets, table;
-	      table = [];
-	      offsets = [];
-	      for (j = 0, len = mapping.length; j < len; j++) {
-	        id = mapping[j];
-	        glyph = glyphs[id];
-	        offsets.push(table.length);
-	        if (glyph) {
-	          table = table.concat(glyph.encode(old2new));
-	        }
-	      }
-	      offsets.push(table.length);
-	      return {
-	        table: table,
-	        offsets: offsets
-	      };
-	    };
-
-	    return GlyfTable;
-
-	  })(Table);
-
-	  SimpleGlyph = (function() {
-	    function SimpleGlyph(raw1, numberOfContours1, xMin1, yMin1, xMax1, yMax1) {
-	      this.raw = raw1;
-	      this.numberOfContours = numberOfContours1;
-	      this.xMin = xMin1;
-	      this.yMin = yMin1;
-	      this.xMax = xMax1;
-	      this.yMax = yMax1;
-	      this.compound = false;
-	    }
-
-	    SimpleGlyph.prototype.encode = function() {
-	      return this.raw.data;
-	    };
-
-	    return SimpleGlyph;
-
-	  })();
-
-	  CompoundGlyph = (function() {
-	    var ARG_1_AND_2_ARE_WORDS, MORE_COMPONENTS, WE_HAVE_AN_X_AND_Y_SCALE, WE_HAVE_A_SCALE, WE_HAVE_A_TWO_BY_TWO, WE_HAVE_INSTRUCTIONS;
-
-	    ARG_1_AND_2_ARE_WORDS = 0x0001;
-
-	    WE_HAVE_A_SCALE = 0x0008;
-
-	    MORE_COMPONENTS = 0x0020;
-
-	    WE_HAVE_AN_X_AND_Y_SCALE = 0x0040;
-
-	    WE_HAVE_A_TWO_BY_TWO = 0x0080;
-
-	    WE_HAVE_INSTRUCTIONS = 0x0100;
-
-	    function CompoundGlyph(raw1, xMin1, yMin1, xMax1, yMax1) {
-	      var data, flags;
-	      this.raw = raw1;
-	      this.xMin = xMin1;
-	      this.yMin = yMin1;
-	      this.xMax = xMax1;
-	      this.yMax = yMax1;
-	      this.compound = true;
-	      this.glyphIDs = [];
-	      this.glyphOffsets = [];
-	      data = this.raw;
-	      while (true) {
-	        flags = data.readShort();
-	        this.glyphOffsets.push(data.pos);
-	        this.glyphIDs.push(data.readShort());
-	        if (!(flags & MORE_COMPONENTS)) {
-	          break;
-	        }
-	        if (flags & ARG_1_AND_2_ARE_WORDS) {
-	          data.pos += 4;
-	        } else {
-	          data.pos += 2;
-	        }
-	        if (flags & WE_HAVE_A_TWO_BY_TWO) {
-	          data.pos += 8;
-	        } else if (flags & WE_HAVE_AN_X_AND_Y_SCALE) {
-	          data.pos += 4;
-	        } else if (flags & WE_HAVE_A_SCALE) {
-	          data.pos += 2;
-	        }
-	      }
-	    }
-
-	    CompoundGlyph.prototype.encode = function(mapping) {
-	      var i, id, j, len, ref, result;
-	      result = new Data(slice.call(this.raw.data));
-	      ref = this.glyphIDs;
-	      for (i = j = 0, len = ref.length; j < len; i = ++j) {
-	        id = ref[i];
-	        result.pos = this.glyphOffsets[i];
-	        result.writeShort(mapping[id]);
-	      }
-	      return result.data;
-	    };
-
-	    return CompoundGlyph;
-
-	  })();
-
-	  module.exports = GlyfTable;
-
-	}).call(this);
-
-
-/***/ },
-/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var AFMFont, fs;
 
-	  fs = __webpack_require__(20);
+	  fs = __webpack_require__(10);
 
 	  AFMFont = (function() {
 	    var WIN_ANSI_MAP, characters;
@@ -8521,6 +7244,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.attributes = {};
 	      this.glyphWidths = {};
 	      this.boundingBoxes = {};
+	      this.kernPairs = {};
 	      this.parse();
 	      this.charWidths = (function() {
 	        var j, results;
@@ -8541,8 +7265,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	        return results;
 	      }).call(this);
 	      this.ascender = +(this.attributes['Ascender'] || 0);
-	      this.decender = +(this.attributes['Descender'] || 0);
-	      this.lineGap = (this.bbox[3] - this.bbox[1]) - (this.ascender - this.decender);
+	      this.descender = +(this.attributes['Descender'] || 0);
+	      this.lineGap = (this.bbox[3] - this.bbox[1]) - (this.ascender - this.descender);
 	    }
 
 	    AFMFont.prototype.parse = function() {
@@ -8578,6 +7302,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	            }
 	            name = line.match(/\bN\s+(\.?\w+)\s*;/)[1];
 	            this.glyphWidths[name] = +line.match(/\bWX\s+(\d+)\s*;/)[1];
+	            break;
+	          case 'KernPairs':
+	            match = line.match(/^KPX\s+(\.?\w+)\s+(\.?\w+)\s+(-?\d+)/);
+	            if (match) {
+	              this.kernPairs[match[1] + '\0' + match[2]] = parseInt(match[3]);
+	            }
 	        }
 	      }
 	    };
@@ -8613,22 +7343,47 @@ return /******/ (function(modules) { // webpackBootstrap
 	    };
 
 	    AFMFont.prototype.encodeText = function(text) {
-	      var char, i, j, ref, string;
-	      string = '';
+	      var char, i, j, ref, res;
+	      res = [];
 	      for (i = j = 0, ref = text.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
 	        char = text.charCodeAt(i);
 	        char = WIN_ANSI_MAP[char] || char;
-	        string += String.fromCharCode(char);
+	        res.push(char.toString(16));
 	      }
-	      return string;
+	      return res;
+	    };
+
+	    AFMFont.prototype.glyphsForString = function(string) {
+	      var charCode, glyphs, i, j, ref;
+	      glyphs = [];
+	      for (i = j = 0, ref = string.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
+	        charCode = string.charCodeAt(i);
+	        glyphs.push(this.characterToGlyph(charCode));
+	      }
+	      return glyphs;
 	    };
 
 	    AFMFont.prototype.characterToGlyph = function(character) {
-	      return characters[WIN_ANSI_MAP[character] || character];
+	      return characters[WIN_ANSI_MAP[character] || character] || '.notdef';
 	    };
 
 	    AFMFont.prototype.widthOfGlyph = function(glyph) {
-	      return this.glyphWidths[glyph];
+	      return this.glyphWidths[glyph] || 0;
+	    };
+
+	    AFMFont.prototype.getKernPair = function(left, right) {
+	      return this.kernPairs[left + '\0' + right] || 0;
+	    };
+
+	    AFMFont.prototype.advancesForGlyphs = function(glyphs) {
+	      var advances, index, j, left, len, right;
+	      advances = [];
+	      for (index = j = 0, len = glyphs.length; j < len; index = ++j) {
+	        left = glyphs[index];
+	        right = glyphs[index + 1];
+	        advances.push(this.widthOfGlyph(left) + this.getKernPair(left, right));
+	      }
+	      return advances;
 	    };
 
 	    characters = '.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n.notdef       .notdef        .notdef        .notdef\n\nspace         exclam         quotedbl       numbersign\ndollar        percent        ampersand      quotesingle\nparenleft     parenright     asterisk       plus\ncomma         hyphen         period         slash\nzero          one            two            three\nfour          five           six            seven\neight         nine           colon          semicolon\nless          equal          greater        question\n\nat            A              B              C\nD             E              F              G\nH             I              J              K\nL             M              N              O\nP             Q              R              S\nT             U              V              W\nX             Y              Z              bracketleft\nbackslash     bracketright   asciicircum    underscore\n\ngrave         a              b              c\nd             e              f              g\nh             i              j              k\nl             m              n              o\np             q              r              s\nt             u              v              w\nx             y              z              braceleft\nbar           braceright     asciitilde     .notdef\n\nEuro          .notdef        quotesinglbase florin\nquotedblbase  ellipsis       dagger         daggerdbl\ncircumflex    perthousand    Scaron         guilsinglleft\nOE            .notdef        Zcaron         .notdef\n.notdef       quoteleft      quoteright     quotedblleft\nquotedblright bullet         endash         emdash\ntilde         trademark      scaron         guilsinglright\noe            .notdef        zcaron         ydieresis\n\nspace         exclamdown     cent           sterling\ncurrency      yen            brokenbar      section\ndieresis      copyright      ordfeminine    guillemotleft\nlogicalnot    hyphen         registered     macron\ndegree        plusminus      twosuperior    threesuperior\nacute         mu             paragraph      periodcentered\ncedilla       onesuperior    ordmasculine   guillemotright\nonequarter    onehalf        threequarters  questiondown\n\nAgrave        Aacute         Acircumflex    Atilde\nAdieresis     Aring          AE             Ccedilla\nEgrave        Eacute         Ecircumflex    Edieresis\nIgrave        Iacute         Icircumflex    Idieresis\nEth           Ntilde         Ograve         Oacute\nOcircumflex   Otilde         Odieresis      multiply\nOslash        Ugrave         Uacute         Ucircumflex\nUdieresis     Yacute         Thorn          germandbls\n\nagrave        aacute         acircumflex    atilde\nadieresis     aring          ae             ccedilla\negrave        eacute         ecircumflex    edieresis\nigrave        iacute         icircumflex    idieresis\neth           ntilde         ograve         oacute\nocircumflex   otilde         odieresis      divide\noslash        ugrave         uacute         ucircumflex\nudieresis     yacute         thorn          ydieresis'.split(/\s+/);
@@ -8643,177 +7398,200 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 48 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
-	  var CmapTable, Subset, utils,
-	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+	  var EmbeddedFont, PDFFont, PDFObject,
+	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+	    hasProp = {}.hasOwnProperty,
+	    slice = [].slice;
 
-	  CmapTable = __webpack_require__(39);
+	  PDFFont = __webpack_require__(34);
 
-	  utils = __webpack_require__(37);
+	  PDFObject = __webpack_require__(25);
 
-	  Subset = (function() {
-	    function Subset(font) {
+	  EmbeddedFont = (function(superClass) {
+	    var toHex;
+
+	    extend(EmbeddedFont, superClass);
+
+	    function EmbeddedFont(document, font, id) {
+	      this.document = document;
 	      this.font = font;
-	      this.subset = {};
-	      this.unicodes = {};
-	      this.next = 33;
+	      this.id = id;
+	      this.subset = this.font.createSubset();
+	      this.unicode = [[0]];
+	      this.widths = [this.font.getGlyph(0).advanceWidth];
+	      this.name = this.font.postscriptName;
+	      this.scale = 1000 / this.font.unitsPerEm;
+	      this.ascender = this.font.ascent * this.scale;
+	      this.descender = this.font.descent * this.scale;
+	      this.lineGap = this.font.lineGap * this.scale;
+	      this.bbox = this.font.bbox;
 	    }
 
-	    Subset.prototype.use = function(character) {
-	      var i, j, ref;
-	      if (typeof character === 'string') {
-	        for (i = j = 0, ref = character.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	          this.use(character.charCodeAt(i));
+	    EmbeddedFont.prototype.encode = function(text, features) {
+	      var base, base1, gid, glyph, glyphs, i, j, key, len, positions, ref, res;
+	      ref = this.font.layout(text, features), glyphs = ref.glyphs, positions = ref.positions;
+	      res = [];
+	      for (i = j = 0, len = glyphs.length; j < len; i = ++j) {
+	        glyph = glyphs[i];
+	        gid = this.subset.includeGlyph(glyph.id);
+	        res.push(('0000' + gid.toString(16)).slice(-4));
+	        if ((base = this.widths)[gid] == null) {
+	          base[gid] = glyph.advanceWidth * this.scale;
 	        }
-	        return;
+	        if ((base1 = this.unicode)[gid] == null) {
+	          base1[gid] = glyph.codePoints;
+	        }
+	        for (key in positions[i]) {
+	          positions[i][key] *= this.scale;
+	        }
+	        positions[i].advanceWidth = glyph.advanceWidth * this.scale;
 	      }
-	      if (!this.unicodes[character]) {
-	        this.subset[this.next] = character;
-	        return this.unicodes[character] = this.next++;
-	      }
+	      return [res, positions];
 	    };
 
-	    Subset.prototype.encodeText = function(text) {
-	      var char, i, j, ref, string;
-	      string = '';
-	      for (i = j = 0, ref = text.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-	        char = this.unicodes[text.charCodeAt(i)];
-	        string += String.fromCharCode(char);
-	      }
-	      return string;
+	    EmbeddedFont.prototype.widthOfString = function(string, size, features) {
+	      var scale, width;
+	      width = this.font.layout(string, features).advanceWidth;
+	      scale = size / this.font.unitsPerEm;
+	      return width * scale;
 	    };
 
-	    Subset.prototype.generateCmap = function() {
-	      var mapping, ref, roman, unicode, unicodeCmap;
-	      unicodeCmap = this.font.cmap.tables[0].codeMap;
-	      mapping = {};
-	      ref = this.subset;
-	      for (roman in ref) {
-	        unicode = ref[roman];
-	        mapping[roman] = unicodeCmap[unicode];
+	    EmbeddedFont.prototype.embed = function() {
+	      var bbox, descendantFont, descriptor, familyClass, flags, fontFile, i, isCFF, name, ref, tag;
+	      isCFF = this.subset.cff != null;
+	      fontFile = this.document.ref();
+	      if (isCFF) {
+	        fontFile.data.Subtype = 'CIDFontType0C';
 	      }
-	      return mapping;
-	    };
-
-	    Subset.prototype.glyphIDs = function() {
-	      var ref, ret, roman, unicode, unicodeCmap, val;
-	      unicodeCmap = this.font.cmap.tables[0].codeMap;
-	      ret = [0];
-	      ref = this.subset;
-	      for (roman in ref) {
-	        unicode = ref[roman];
-	        val = unicodeCmap[unicode];
-	        if ((val != null) && indexOf.call(ret, val) < 0) {
-	          ret.push(val);
+	      this.subset.encodeStream().pipe(fontFile);
+	      familyClass = (((ref = this.font['OS/2']) != null ? ref.sFamilyClass : void 0) || 0) >> 8;
+	      flags = 0;
+	      if (this.font.post.isFixedPitch) {
+	        flags |= 1 << 0;
+	      }
+	      if ((1 <= familyClass && familyClass <= 7)) {
+	        flags |= 1 << 1;
+	      }
+	      flags |= 1 << 2;
+	      if (familyClass === 10) {
+	        flags |= 1 << 3;
+	      }
+	      if (this.font.head.macStyle.italic) {
+	        flags |= 1 << 6;
+	      }
+	      tag = ((function() {
+	        var j, results;
+	        results = [];
+	        for (i = j = 0; j < 6; i = ++j) {
+	          results.push(String.fromCharCode(Math.random() * 26 + 65));
 	        }
-	      }
-	      return ret.sort();
-	    };
-
-	    Subset.prototype.glyphsFor = function(glyphIDs) {
-	      var additionalIDs, glyph, glyphs, id, j, len, ref;
-	      glyphs = {};
-	      for (j = 0, len = glyphIDs.length; j < len; j++) {
-	        id = glyphIDs[j];
-	        glyphs[id] = this.font.glyf.glyphFor(id);
-	      }
-	      additionalIDs = [];
-	      for (id in glyphs) {
-	        glyph = glyphs[id];
-	        if (glyph != null ? glyph.compound : void 0) {
-	          additionalIDs.push.apply(additionalIDs, glyph.glyphIDs);
-	        }
-	      }
-	      if (additionalIDs.length > 0) {
-	        ref = this.glyphsFor(additionalIDs);
-	        for (id in ref) {
-	          glyph = ref[id];
-	          glyphs[id] = glyph;
-	        }
-	      }
-	      return glyphs;
-	    };
-
-	    Subset.prototype.encode = function() {
-	      var cmap, code, glyf, glyphs, id, ids, loca, name, new2old, newIDs, nextGlyphID, old2new, oldID, oldIDs, ref, ref1, tables;
-	      cmap = CmapTable.encode(this.generateCmap(), 'unicode');
-	      glyphs = this.glyphsFor(this.glyphIDs());
-	      old2new = {
-	        0: 0
-	      };
-	      ref = cmap.charMap;
-	      for (code in ref) {
-	        ids = ref[code];
-	        old2new[ids.old] = ids["new"];
-	      }
-	      nextGlyphID = cmap.maxGlyphID;
-	      for (oldID in glyphs) {
-	        if (!(oldID in old2new)) {
-	          old2new[oldID] = nextGlyphID++;
-	        }
-	      }
-	      new2old = utils.invert(old2new);
-	      newIDs = Object.keys(new2old).sort(function(a, b) {
-	        return a - b;
+	        return results;
+	      })()).join('');
+	      name = tag + '+' + this.font.postscriptName;
+	      bbox = this.font.bbox;
+	      descriptor = this.document.ref({
+	        Type: 'FontDescriptor',
+	        FontName: name,
+	        Flags: flags,
+	        FontBBox: [bbox.minX * this.scale, bbox.minY * this.scale, bbox.maxX * this.scale, bbox.maxY * this.scale],
+	        ItalicAngle: this.font.italicAngle,
+	        Ascent: this.ascender,
+	        Descent: this.descender,
+	        CapHeight: (this.font.capHeight || this.font.ascent) * this.scale,
+	        XHeight: (this.font.xHeight || 0) * this.scale,
+	        StemV: 0
 	      });
-	      oldIDs = (function() {
+	      if (isCFF) {
+	        descriptor.data.FontFile3 = fontFile;
+	      } else {
+	        descriptor.data.FontFile2 = fontFile;
+	      }
+	      descriptor.end();
+	      descendantFont = this.document.ref({
+	        Type: 'Font',
+	        Subtype: isCFF ? 'CIDFontType0' : 'CIDFontType2',
+	        BaseFont: name,
+	        CIDSystemInfo: {
+	          Registry: new String('Adobe'),
+	          Ordering: new String('Identity'),
+	          Supplement: 0
+	        },
+	        FontDescriptor: descriptor,
+	        W: [0, this.widths]
+	      });
+	      descendantFont.end();
+	      this.dictionary.data = {
+	        Type: 'Font',
+	        Subtype: 'Type0',
+	        BaseFont: name,
+	        Encoding: 'Identity-H',
+	        DescendantFonts: [descendantFont],
+	        ToUnicode: this.toUnicodeCmap()
+	      };
+	      return this.dictionary.end();
+	    };
+
+	    toHex = function() {
+	      var code, codePoints, codes;
+	      codePoints = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+	      codes = (function() {
 	        var j, len, results;
 	        results = [];
-	        for (j = 0, len = newIDs.length; j < len; j++) {
-	          id = newIDs[j];
-	          results.push(new2old[id]);
+	        for (j = 0, len = codePoints.length; j < len; j++) {
+	          code = codePoints[j];
+	          results.push(('0000' + code.toString(16)).slice(-4));
 	        }
 	        return results;
 	      })();
-	      glyf = this.font.glyf.encode(glyphs, oldIDs, old2new);
-	      loca = this.font.loca.encode(glyf.offsets);
-	      name = this.font.name.encode();
-	      this.postscriptName = name.postscriptName;
-	      this.cmap = {};
-	      ref1 = cmap.charMap;
-	      for (code in ref1) {
-	        ids = ref1[code];
-	        this.cmap[code] = ids.old;
-	      }
-	      tables = {
-	        cmap: cmap.table,
-	        glyf: glyf.table,
-	        loca: loca.table,
-	        hmtx: this.font.hmtx.encode(oldIDs),
-	        hhea: this.font.hhea.encode(oldIDs),
-	        maxp: this.font.maxp.encode(oldIDs),
-	        post: this.font.post.encode(oldIDs),
-	        name: name.table,
-	        head: this.font.head.encode(loca)
-	      };
-	      if (this.font.os2.exists) {
-	        tables['OS/2'] = this.font.os2.raw();
-	      }
-	      return this.font.directory.encode(tables);
+	      return codes.join('');
 	    };
 
-	    return Subset;
+	    EmbeddedFont.prototype.toUnicodeCmap = function() {
+	      var cmap, codePoints, encoded, entries, j, k, len, len1, ref, value;
+	      cmap = this.document.ref();
+	      entries = [];
+	      ref = this.unicode;
+	      for (j = 0, len = ref.length; j < len; j++) {
+	        codePoints = ref[j];
+	        encoded = [];
+	        for (k = 0, len1 = codePoints.length; k < len1; k++) {
+	          value = codePoints[k];
+	          if (value > 0xffff) {
+	            value -= 0x10000;
+	            encoded.push(toHex(value >>> 10 & 0x3ff | 0xd800));
+	            value = 0xdc00 | value & 0x3ff;
+	          }
+	          encoded.push(toHex(value));
+	        }
+	        entries.push("<" + (encoded.join(' ')) + ">");
+	      }
+	      cmap.end("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo <<\n  /Registry (Adobe)\n  /Ordering (UCS)\n  /Supplement 0\n>> def\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000><ffff>\nendcodespacerange\n1 beginbfrange\n<0000> <" + (toHex(entries.length - 1)) + "> [" + (entries.join(' ')) + "]\nendbfrange\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend");
+	      return cmap;
+	    };
 
-	  })();
+	    return EmbeddedFont;
 
-	  module.exports = Subset;
+	  })(PDFFont);
+
+	  module.exports = EmbeddedFont;
 
 	}).call(this);
 
 
 /***/ },
-/* 49 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var LineWrapper;
 
-	  LineWrapper = __webpack_require__(50);
+	  LineWrapper = __webpack_require__(40);
 
 	  module.exports = {
 	    initText: function() {
@@ -8871,7 +7649,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (options == null) {
 	        options = {};
 	      }
-	      return this._font.widthOfString(string, this._fontSize) + (options.characterSpacing || 0) * (string.length - 1);
+	      return this._font.widthOfString(string, this._fontSize, options.features) + (options.characterSpacing || 0) * (string.length - 1);
 	    },
 	    heightOfString: function(text, options) {
 	      var height, lineGap, x, y;
@@ -9018,8 +7796,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 	    },
 	    _fragment: function(text, x, y, options) {
-	      var align, base, characterSpacing, commands, d, encoded, i, j, len, lineWidth, lineY, mode, name, renderedWidth, spaceWidth, textWidth, word, wordSpacing, words;
-	      text = '' + text;
+	      var addSegment, align, base, characterSpacing, commands, d, encoded, encodedWord, flush, hadOffset, i, j, last, len, len1, lineWidth, lineY, m, mode, name, pos, positions, positionsWord, ref, ref1, renderedWidth, scale, spaceWidth, textWidth, word, wordSpacing, words;
+	      text = ('' + text).replace(/\n/g, '');
 	      if (text.length === 0) {
 	        return;
 	      }
@@ -9069,9 +7847,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if ((base = this.page.fonts)[name = this._font.id] == null) {
 	        base[name] = this._font.ref();
 	      }
-	      this._font.use(text);
 	      this.addContent("BT");
-	      this.addContent(x + " " + y + " Td");
+	      this.addContent("1 0 0 1 " + x + " " + y + " Tm");
 	      this.addContent("/" + this._font.id + " " + this._fontSize + " Tf");
 	      mode = options.fill && options.stroke ? 2 : options.stroke ? 1 : 0;
 	      if (mode) {
@@ -9084,33 +7861,61 @@ return /******/ (function(modules) { // webpackBootstrap
 	        words = text.trim().split(/\s+/);
 	        wordSpacing += this.widthOfString(' ') + characterSpacing;
 	        wordSpacing *= 1000 / this._fontSize;
-	        commands = [];
+	        encoded = [];
+	        positions = [];
 	        for (j = 0, len = words.length; j < len; j++) {
 	          word = words[j];
-	          encoded = this._font.encode(word);
-	          encoded = ((function() {
-	            var m, ref, results;
-	            results = [];
-	            for (i = m = 0, ref = encoded.length; m < ref; i = m += 1) {
-	              results.push(encoded.charCodeAt(i).toString(16));
-	            }
-	            return results;
-	          })()).join('');
-	          commands.push("<" + encoded + "> " + (-wordSpacing));
+	          ref = this._font.encode(word, options.features), encodedWord = ref[0], positionsWord = ref[1];
+	          encoded.push.apply(encoded, encodedWord);
+	          positions.push.apply(positions, positionsWord);
+	          positions[positions.length - 1].xAdvance += wordSpacing;
 	        }
-	        this.addContent("[" + (commands.join(' ')) + "] TJ");
 	      } else {
-	        encoded = this._font.encode(text);
-	        encoded = ((function() {
-	          var m, ref, results;
-	          results = [];
-	          for (i = m = 0, ref = encoded.length; m < ref; i = m += 1) {
-	            results.push(encoded.charCodeAt(i).toString(16));
-	          }
-	          return results;
-	        })()).join('');
-	        this.addContent("<" + encoded + "> Tj");
+	        ref1 = this._font.encode(text, options.features), encoded = ref1[0], positions = ref1[1];
 	      }
+	      scale = this._fontSize / 1000;
+	      commands = [];
+	      last = 0;
+	      hadOffset = false;
+	      addSegment = (function(_this) {
+	        return function(cur) {
+	          var advance, hex;
+	          if (last < cur) {
+	            hex = encoded.slice(last, cur).join('');
+	            advance = positions[cur - 1].xAdvance - positions[cur - 1].advanceWidth;
+	            commands.push("<" + hex + "> " + (-advance));
+	          }
+	          return last = cur;
+	        };
+	      })(this);
+	      flush = (function(_this) {
+	        return function(i) {
+	          addSegment(i);
+	          if (commands.length > 0) {
+	            _this.addContent("[" + (commands.join(' ')) + "] TJ");
+	            return commands.length = 0;
+	          }
+	        };
+	      })(this);
+	      for (i = m = 0, len1 = positions.length; m < len1; i = ++m) {
+	        pos = positions[i];
+	        if (pos.xOffset || pos.yOffset) {
+	          flush(i);
+	          this.addContent("1 0 0 1 " + (x + pos.xOffset * scale) + " " + (y + pos.yOffset * scale) + " Tm");
+	          flush(i + 1);
+	          hadOffset = true;
+	        } else {
+	          if (hadOffset) {
+	            this.addContent("1 0 0 1 " + x + " " + y + " Tm");
+	            hadOffset = false;
+	          }
+	          if (pos.xAdvance - pos.advanceWidth !== 0) {
+	            addSegment(i + 1);
+	          }
+	        }
+	        x += pos.xAdvance * scale;
+	      }
+	      flush(i);
 	      this.addContent("ET");
 	      return this.restore();
 	    }
@@ -9120,7 +7925,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 50 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -9129,9 +7934,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  EventEmitter = __webpack_require__(51).EventEmitter;
+	  EventEmitter = __webpack_require__(41).EventEmitter;
 
-	  LineBreaker = __webpack_require__(52);
+	  LineBreaker = __webpack_require__(42);
 
 	  LineWrapper = (function(superClass) {
 	    extend(LineWrapper, superClass);
@@ -9151,6 +7956,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.column = 1;
 	      this.ellipsis = options.ellipsis;
 	      this.continuedX = 0;
+	      this.features = options.features;
 	      if (options.height != null) {
 	        this.height = options.height;
 	        this.maxY = this.startY + options.height;
@@ -9378,26 +8184,26 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 51 */
+/* 41 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_51__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_41__;
 
 /***/ },
-/* 52 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.7.1
 	(function() {
 	  var AI, AL, BA, BK, CB, CI_BRK, CJ, CP_BRK, CR, DI_BRK, ID, IN_BRK, LF, LineBreaker, NL, NS, PR_BRK, SA, SG, SP, UnicodeTrie, WJ, XX, characterClasses, classTrie, pairTable, _ref, _ref1;
 
-	  UnicodeTrie = __webpack_require__(53);
+	  UnicodeTrie = __webpack_require__(9);
 
-	  classTrie = new UnicodeTrie(__webpack_require__(54));
+	  classTrie = new UnicodeTrie(__webpack_require__(43));
 
-	  _ref = __webpack_require__(55), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+	  _ref = __webpack_require__(44), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
 
-	  _ref1 = __webpack_require__(56), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+	  _ref1 = __webpack_require__(45), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
 
 	  LineBreaker = (function() {
 	    var Break, mapClass, mapFirst;
@@ -9545,13 +8351,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 53 */
-/***/ function(module, exports) {
-
-	module.exports = __WEBPACK_EXTERNAL_MODULE_53__;
-
-/***/ },
-/* 54 */
+/* 43 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -42178,7 +40978,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 55 */
+/* 44 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -42269,7 +41069,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 56 */
+/* 45 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -42292,14 +41092,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 57 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFImage;
 
-	  PDFImage = __webpack_require__(58);
+	  PDFImage = __webpack_require__(47);
 
 	  module.exports = {
 	    initImages: function() {
@@ -42380,7 +41180,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 58 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -42393,13 +41193,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	(function() {
 	  var Data, JPEG, PDFImage, PNG, fs;
 
-	  fs = __webpack_require__(20);
+	  fs = __webpack_require__(10);
 
-	  Data = __webpack_require__(32);
+	  Data = __webpack_require__(48);
 
-	  JPEG = __webpack_require__(59);
+	  JPEG = __webpack_require__(49);
 
-	  PNG = __webpack_require__(60);
+	  PNG = __webpack_require__(50);
 
 	  PDFImage = (function() {
 	    function PDFImage() {}
@@ -42408,6 +41208,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var data, match;
 	      if (Buffer.isBuffer(src)) {
 	        data = src;
+	      } else if (src instanceof ArrayBuffer) {
+	        data = new Buffer(new Uint8Array(src));
 	      } else {
 	        if (match = /^data:.+;base64,(.*)$/.exec(src)) {
 	          data = new Buffer(match[1], 'base64');
@@ -42437,7 +41239,205 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 59 */
+/* 48 */
+/***/ function(module, exports) {
+
+	// Generated by CoffeeScript 1.10.0
+	(function() {
+	  var Data;
+
+	  Data = (function() {
+	    function Data(data) {
+	      this.data = data != null ? data : [];
+	      this.pos = 0;
+	      this.length = this.data.length;
+	    }
+
+	    Data.prototype.readByte = function() {
+	      return this.data[this.pos++];
+	    };
+
+	    Data.prototype.writeByte = function(byte) {
+	      return this.data[this.pos++] = byte;
+	    };
+
+	    Data.prototype.byteAt = function(index) {
+	      return this.data[index];
+	    };
+
+	    Data.prototype.readBool = function() {
+	      return !!this.readByte();
+	    };
+
+	    Data.prototype.writeBool = function(val) {
+	      return this.writeByte(val ? 1 : 0);
+	    };
+
+	    Data.prototype.readUInt32 = function() {
+	      var b1, b2, b3, b4;
+	      b1 = this.readByte() * 0x1000000;
+	      b2 = this.readByte() << 16;
+	      b3 = this.readByte() << 8;
+	      b4 = this.readByte();
+	      return b1 + b2 + b3 + b4;
+	    };
+
+	    Data.prototype.writeUInt32 = function(val) {
+	      this.writeByte((val >>> 24) & 0xff);
+	      this.writeByte((val >> 16) & 0xff);
+	      this.writeByte((val >> 8) & 0xff);
+	      return this.writeByte(val & 0xff);
+	    };
+
+	    Data.prototype.readInt32 = function() {
+	      var int;
+	      int = this.readUInt32();
+	      if (int >= 0x80000000) {
+	        return int - 0x100000000;
+	      } else {
+	        return int;
+	      }
+	    };
+
+	    Data.prototype.writeInt32 = function(val) {
+	      if (val < 0) {
+	        val += 0x100000000;
+	      }
+	      return this.writeUInt32(val);
+	    };
+
+	    Data.prototype.readUInt16 = function() {
+	      var b1, b2;
+	      b1 = this.readByte() << 8;
+	      b2 = this.readByte();
+	      return b1 | b2;
+	    };
+
+	    Data.prototype.writeUInt16 = function(val) {
+	      this.writeByte((val >> 8) & 0xff);
+	      return this.writeByte(val & 0xff);
+	    };
+
+	    Data.prototype.readInt16 = function() {
+	      var int;
+	      int = this.readUInt16();
+	      if (int >= 0x8000) {
+	        return int - 0x10000;
+	      } else {
+	        return int;
+	      }
+	    };
+
+	    Data.prototype.writeInt16 = function(val) {
+	      if (val < 0) {
+	        val += 0x10000;
+	      }
+	      return this.writeUInt16(val);
+	    };
+
+	    Data.prototype.readString = function(length) {
+	      var i, j, ref, ret;
+	      ret = [];
+	      for (i = j = 0, ref = length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
+	        ret[i] = String.fromCharCode(this.readByte());
+	      }
+	      return ret.join('');
+	    };
+
+	    Data.prototype.writeString = function(val) {
+	      var i, j, ref, results;
+	      results = [];
+	      for (i = j = 0, ref = val.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
+	        results.push(this.writeByte(val.charCodeAt(i)));
+	      }
+	      return results;
+	    };
+
+	    Data.prototype.stringAt = function(pos, length) {
+	      this.pos = pos;
+	      return this.readString(length);
+	    };
+
+	    Data.prototype.readShort = function() {
+	      return this.readInt16();
+	    };
+
+	    Data.prototype.writeShort = function(val) {
+	      return this.writeInt16(val);
+	    };
+
+	    Data.prototype.readLongLong = function() {
+	      var b1, b2, b3, b4, b5, b6, b7, b8;
+	      b1 = this.readByte();
+	      b2 = this.readByte();
+	      b3 = this.readByte();
+	      b4 = this.readByte();
+	      b5 = this.readByte();
+	      b6 = this.readByte();
+	      b7 = this.readByte();
+	      b8 = this.readByte();
+	      if (b1 & 0x80) {
+	        return ((b1 ^ 0xff) * 0x100000000000000 + (b2 ^ 0xff) * 0x1000000000000 + (b3 ^ 0xff) * 0x10000000000 + (b4 ^ 0xff) * 0x100000000 + (b5 ^ 0xff) * 0x1000000 + (b6 ^ 0xff) * 0x10000 + (b7 ^ 0xff) * 0x100 + (b8 ^ 0xff) + 1) * -1;
+	      }
+	      return b1 * 0x100000000000000 + b2 * 0x1000000000000 + b3 * 0x10000000000 + b4 * 0x100000000 + b5 * 0x1000000 + b6 * 0x10000 + b7 * 0x100 + b8;
+	    };
+
+	    Data.prototype.writeLongLong = function(val) {
+	      var high, low;
+	      high = Math.floor(val / 0x100000000);
+	      low = val & 0xffffffff;
+	      this.writeByte((high >> 24) & 0xff);
+	      this.writeByte((high >> 16) & 0xff);
+	      this.writeByte((high >> 8) & 0xff);
+	      this.writeByte(high & 0xff);
+	      this.writeByte((low >> 24) & 0xff);
+	      this.writeByte((low >> 16) & 0xff);
+	      this.writeByte((low >> 8) & 0xff);
+	      return this.writeByte(low & 0xff);
+	    };
+
+	    Data.prototype.readInt = function() {
+	      return this.readInt32();
+	    };
+
+	    Data.prototype.writeInt = function(val) {
+	      return this.writeInt32(val);
+	    };
+
+	    Data.prototype.slice = function(start, end) {
+	      return this.data.slice(start, end);
+	    };
+
+	    Data.prototype.read = function(bytes) {
+	      var buf, i, j, ref;
+	      buf = [];
+	      for (i = j = 0, ref = bytes; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
+	        buf.push(this.readByte());
+	      }
+	      return buf;
+	    };
+
+	    Data.prototype.write = function(bytes) {
+	      var byte, j, len, results;
+	      results = [];
+	      for (j = 0, len = bytes.length; j < len; j++) {
+	        byte = bytes[j];
+	        results.push(this.writeByte(byte));
+	      }
+	      return results;
+	    };
+
+	    return Data;
+
+	  })();
+
+	  module.exports = Data;
+
+	}).call(this);
+
+
+/***/ },
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -42445,7 +41445,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var JPEG, fs,
 	    indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-	  fs = __webpack_require__(20);
+	  fs = __webpack_require__(10);
 
 	  JPEG = (function() {
 	    var MARKERS;
@@ -42521,16 +41521,16 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 60 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PNG, PNGImage, zlib;
 
-	  zlib = __webpack_require__(23);
+	  zlib = __webpack_require__(27);
 
-	  PNG = __webpack_require__(61);
+	  PNG = __webpack_require__(51);
 
 	  PNGImage = (function() {
 	    function PNGImage(data, label) {
@@ -42685,7 +41685,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 61 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.4.0
@@ -42714,9 +41714,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	(function() {
 	  var PNG, fs, zlib;
 
-	  fs = __webpack_require__(20);
+	  fs = __webpack_require__(10);
 
-	  zlib = __webpack_require__(23);
+	  zlib = __webpack_require__(27);
 
 	  module.exports = PNG = (function() {
 
@@ -43008,7 +42008,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 62 */
+/* 52 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -43147,8 +42147,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 63 */
+/* 53 */
 /***/ function(module, exports) {
+
+	/* jslint node: true */
+	'use strict';
 
 	module.exports = {
 		'4A0': [4767.87, 6740.79],
@@ -43205,43 +42208,51 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 64 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var pdfKit = __webpack_require__(18);
-	var PDFImage = __webpack_require__(58);
+	var PDFImage = __webpack_require__(47);
 
-	function ImageMeasure(pdfDoc, imageDictionary) {
-		this.pdfDoc = pdfDoc;
+	function ImageMeasure(pdfKitDoc, imageDictionary) {
+		this.pdfKitDoc = pdfKitDoc;
 		this.imageDictionary = imageDictionary || {};
 	}
 
-	ImageMeasure.prototype.measureImage = function(src) {
+	ImageMeasure.prototype.measureImage = function (src) {
 		var image, label;
 		var that = this;
 
-		if (!this.pdfDoc._imageRegistry[src]) {
-			label = 'I' + (++this.pdfDoc._imageCount);
-			image = PDFImage.open(realImageSrc(src), label);
-			image.embed(this.pdfDoc);
-			this.pdfDoc._imageRegistry[src] = image;
+		if (!this.pdfKitDoc._imageRegistry[src]) {
+			label = 'I' + (++this.pdfKitDoc._imageCount);
+			try {
+				image = PDFImage.open(realImageSrc(src), label);
+			} catch (error) {
+				image = null;
+			}
+			if (image === null || image === undefined) {
+				throw 'invalid image, images dictionary should contain dataURL entries (or local file paths in node.js)';
+			}
+			image.embed(this.pdfKitDoc);
+			this.pdfKitDoc._imageRegistry[src] = image;
 		} else {
-			image = this.pdfDoc._imageRegistry[src];
+			image = this.pdfKitDoc._imageRegistry[src];
 		}
 
-		return { width: image.width, height: image.height };
+		return {width: image.width, height: image.height};
 
 		function realImageSrc(src) {
 			var img = that.imageDictionary[src];
 
-			if (!img) return src;
+			if (!img) {
+				return src;
+			}
 
 			var index = img.indexOf('base64,');
 			if (index < 0) {
-				throw 'invalid image format, images dictionary should contain dataURL entries';
+				return that.imageDictionary[src];
 			}
 
 			return new Buffer(img.substring(index + 7), 'base64');
@@ -43252,37 +42263,36 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 65 */
+/* 55 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
 	'use strict';
 
-
 	function groupDecorations(line) {
 		var groups = [], curGroup = null;
-		for(var i = 0, l = line.inlines.length; i < l; i++) {
+		for (var i = 0, l = line.inlines.length; i < l; i++) {
 			var inline = line.inlines[i];
 			var decoration = inline.decoration;
-			if(!decoration) {
+			if (!decoration) {
 				curGroup = null;
 				continue;
 			}
 			var color = inline.decorationColor || inline.color || 'black';
 			var style = inline.decorationStyle || 'solid';
-			decoration = Array.isArray(decoration) ? decoration : [ decoration ];
-			for(var ii = 0, ll = decoration.length; ii < ll; ii++) {
+			decoration = Array.isArray(decoration) ? decoration : [decoration];
+			for (var ii = 0, ll = decoration.length; ii < ll; ii++) {
 				var deco = decoration[ii];
-				if(!curGroup || deco !== curGroup.decoration ||
-						style !== curGroup.decorationStyle || color !== curGroup.decorationColor ||
-						deco === 'lineThrough') {
-			
+				if (!curGroup || deco !== curGroup.decoration ||
+					style !== curGroup.decorationStyle || color !== curGroup.decorationColor ||
+					deco === 'lineThrough') {
+
 					curGroup = {
 						line: line,
-						decoration: deco, 
-						decorationColor: color, 
+						decoration: deco,
+						decorationColor: color,
 						decorationStyle: style,
-						inlines: [ inline ]
+						inlines: [inline]
 					};
 					groups.push(curGroup);
 				} else {
@@ -43290,7 +42300,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 			}
 		}
-		
+
 		return groups;
 	}
 
@@ -43317,9 +42327,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			ascent = biggerInline.font.ascender / 1000 * biggerInline.fontSize,
 			height = biggerInline.height,
 			descent = height - ascent;
-		
+
 		var lw = 0.5 + Math.floor(Math.max(biggerInline.fontSize - 8, 0) / 2) * 0.12;
-		
+
 		switch (group.decoration) {
 			case 'underline':
 				y += lineAscent + descent * 0.45;
@@ -43334,48 +42344,48 @@ return /******/ (function(modules) { // webpackBootstrap
 				throw 'Unkown decoration : ' + group.decoration;
 		}
 		pdfKitDoc.save();
-		
-		if(group.decorationStyle === 'double') {
-			var gap = Math.max(0.5, lw*2);
-			pdfKitDoc	.fillColor(group.decorationColor)
-						.rect(x + firstInline.x, y-lw/2, totalWidth, lw/2).fill()
-						.rect(x + firstInline.x, y+gap-lw/2, totalWidth, lw/2).fill();
-		} else if(group.decorationStyle === 'dashed') {
-			var nbDashes = Math.ceil(totalWidth / (3.96+2.84));
+
+		if (group.decorationStyle === 'double') {
+			var gap = Math.max(0.5, lw * 2);
+			pdfKitDoc.fillColor(group.decorationColor)
+				.rect(x + firstInline.x, y - lw / 2, totalWidth, lw / 2).fill()
+				.rect(x + firstInline.x, y + gap - lw / 2, totalWidth, lw / 2).fill();
+		} else if (group.decorationStyle === 'dashed') {
+			var nbDashes = Math.ceil(totalWidth / (3.96 + 2.84));
 			var rdx = x + firstInline.x;
 			pdfKitDoc.rect(rdx, y, totalWidth, lw).clip();
 			pdfKitDoc.fillColor(group.decorationColor);
 			for (var i = 0; i < nbDashes; i++) {
-				pdfKitDoc.rect(rdx, y-lw/2, 3.96, lw).fill();
+				pdfKitDoc.rect(rdx, y - lw / 2, 3.96, lw).fill();
 				rdx += 3.96 + 2.84;
 			}
-		} else if(group.decorationStyle === 'dotted') {
-			var nbDots = Math.ceil(totalWidth / (lw*3));
+		} else if (group.decorationStyle === 'dotted') {
+			var nbDots = Math.ceil(totalWidth / (lw * 3));
 			var rx = x + firstInline.x;
 			pdfKitDoc.rect(rx, y, totalWidth, lw).clip();
 			pdfKitDoc.fillColor(group.decorationColor);
 			for (var ii = 0; ii < nbDots; ii++) {
-				pdfKitDoc.rect(rx, y-lw/2, lw, lw).fill();
-				rx += (lw*3);
+				pdfKitDoc.rect(rx, y - lw / 2, lw, lw).fill();
+				rx += (lw * 3);
 			}
-		} else if(group.decorationStyle === 'wavy') {
+		} else if (group.decorationStyle === 'wavy') {
 			var sh = 0.7, sv = 1;
-			var nbWaves = Math.ceil(totalWidth / (sh*2))+1;
+			var nbWaves = Math.ceil(totalWidth / (sh * 2)) + 1;
 			var rwx = x + firstInline.x - 1;
-			pdfKitDoc.rect(x + firstInline.x, y-sv, totalWidth, y+sv).clip();
+			pdfKitDoc.rect(x + firstInline.x, y - sv, totalWidth, y + sv).clip();
 			pdfKitDoc.lineWidth(0.24);
 			pdfKitDoc.moveTo(rwx, y);
-			for(var iii = 0; iii < nbWaves; iii++) {
-				pdfKitDoc   .bezierCurveTo(rwx+sh, y-sv, rwx+sh*2, y-sv, rwx+sh*3, y)
-							.bezierCurveTo(rwx+sh*4, y+sv, rwx+sh*5, y+sv, rwx+sh*6, y);
-					rwx += sh*6;
-				}
+			for (var iii = 0; iii < nbWaves; iii++) {
+				pdfKitDoc.bezierCurveTo(rwx + sh, y - sv, rwx + sh * 2, y - sv, rwx + sh * 3, y)
+					.bezierCurveTo(rwx + sh * 4, y + sv, rwx + sh * 5, y + sv, rwx + sh * 6, y);
+				rwx += sh * 6;
+			}
 			pdfKitDoc.stroke(group.decorationColor);
-			
+
 		} else {
-			pdfKitDoc	.fillColor(group.decorationColor)
-						.rect(x + firstInline.x, y-lw/2, totalWidth, lw)
-						.fill();
+			pdfKitDoc.fillColor(group.decorationColor)
+				.rect(x + firstInline.x, y - lw / 2, totalWidth, lw)
+				.fill();
 		}
 		pdfKitDoc.restore();
 	}
@@ -43389,13 +42399,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	function drawBackground(line, x, y, pdfKitDoc) {
 		var height = line.getHeight();
-		for(var i = 0, l = line.inlines.length; i < l; i++) {
+		for (var i = 0, l = line.inlines.length; i < l; i++) {
 			var inline = line.inlines[i];
-				if(inline.background) {
-					pdfKitDoc	.fillColor(inline.background)
-								.rect(x + inline.x, y, inline.width, height)
-								.fill();
-				}
+			if (inline.background) {
+				pdfKitDoc.fillColor(inline.background)
+					.rect(x + inline.x, y, inline.width, height)
+					.fill();
+			}
 		}
 	}
 
