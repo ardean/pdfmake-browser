@@ -1,13 +1,13 @@
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("lodash"), require("unicode-trie"), require("stream"), require("zlib"), require("restructure"), require("babel-runtime/core-js/object/get-own-property-descriptor"), require("babel-runtime/core-js/get-iterator"), require("babel-runtime/core-js/object/freeze"), require("babel-runtime/core-js/object/keys"), require("babel-runtime/helpers/typeof"), require("babel-runtime/core-js/object/define-property"), require("babel-runtime/helpers/classCallCheck"), require("babel-runtime/helpers/createClass"), require("babel-runtime/core-js/map"), require("babel-runtime/core-js/object/get-prototype-of"), require("babel-runtime/helpers/possibleConstructorReturn"), require("babel-runtime/helpers/inherits"), require("restructure/src/utils"), require("babel-runtime/core-js/object/define-properties"), require("deep-equal"), require("babel-runtime/helpers/get"), require("babel-runtime/core-js/object/assign"), require("babel-runtime/helpers/toConsumableArray"), require("babel-runtime/core-js/string/from-code-point"), require("babel-runtime/helpers/slicedToArray"), require("babel-runtime/core-js/array/from"), require("babel-runtime/core-js/set"), require("unicode-properties"), require("dfa"), require("clone"), require("tiny-inflate"), require("brotli/decompress"), (function webpackLoadOptionalExternalModule() { try { return require("iconv-lite"); } catch(e) {} }()), require("events"));
+		module.exports = factory(require("lodash"), require("unicode-trie"), require("stream"), require("zlib"), (function webpackLoadOptionalExternalModule() { try { return require("iconv-lite"); } catch(e) {} }()), require("util"), require("babel-runtime/core-js/object/get-own-property-descriptor"), require("babel-runtime/core-js/get-iterator"), require("babel-runtime/core-js/object/freeze"), require("babel-runtime/core-js/object/keys"), require("babel-runtime/helpers/typeof"), require("babel-runtime/core-js/object/define-property"), require("babel-runtime/helpers/classCallCheck"), require("babel-runtime/helpers/createClass"), require("babel-runtime/core-js/map"), require("babel-runtime/core-js/object/get-prototype-of"), require("babel-runtime/helpers/possibleConstructorReturn"), require("babel-runtime/helpers/inherits"), require("babel-runtime/core-js/object/define-properties"), require("deep-equal"), require("babel-runtime/helpers/get"), require("babel-runtime/core-js/object/assign"), require("babel-runtime/helpers/toConsumableArray"), require("babel-runtime/core-js/string/from-code-point"), require("babel-runtime/helpers/slicedToArray"), require("babel-runtime/core-js/array/from"), require("babel-runtime/core-js/set"), require("unicode-properties"), require("dfa"), require("clone"), require("tiny-inflate"), require("brotli/decompress"), require("events"));
 	else if(typeof define === 'function' && define.amd)
-		define(["lodash", "unicode-trie", "stream", "zlib", "restructure", "babel-runtime/core-js/object/get-own-property-descriptor", "babel-runtime/core-js/get-iterator", "babel-runtime/core-js/object/freeze", "babel-runtime/core-js/object/keys", "babel-runtime/helpers/typeof", "babel-runtime/core-js/object/define-property", "babel-runtime/helpers/classCallCheck", "babel-runtime/helpers/createClass", "babel-runtime/core-js/map", "babel-runtime/core-js/object/get-prototype-of", "babel-runtime/helpers/possibleConstructorReturn", "babel-runtime/helpers/inherits", "restructure/src/utils", "babel-runtime/core-js/object/define-properties", "deep-equal", "babel-runtime/helpers/get", "babel-runtime/core-js/object/assign", "babel-runtime/helpers/toConsumableArray", "babel-runtime/core-js/string/from-code-point", "babel-runtime/helpers/slicedToArray", "babel-runtime/core-js/array/from", "babel-runtime/core-js/set", "unicode-properties", "dfa", "clone", "tiny-inflate", "brotli/decompress", "iconv-lite", "events"], factory);
+		define(["lodash", "unicode-trie", "stream", "zlib", "iconv-lite", "util", "babel-runtime/core-js/object/get-own-property-descriptor", "babel-runtime/core-js/get-iterator", "babel-runtime/core-js/object/freeze", "babel-runtime/core-js/object/keys", "babel-runtime/helpers/typeof", "babel-runtime/core-js/object/define-property", "babel-runtime/helpers/classCallCheck", "babel-runtime/helpers/createClass", "babel-runtime/core-js/map", "babel-runtime/core-js/object/get-prototype-of", "babel-runtime/helpers/possibleConstructorReturn", "babel-runtime/helpers/inherits", "babel-runtime/core-js/object/define-properties", "deep-equal", "babel-runtime/helpers/get", "babel-runtime/core-js/object/assign", "babel-runtime/helpers/toConsumableArray", "babel-runtime/core-js/string/from-code-point", "babel-runtime/helpers/slicedToArray", "babel-runtime/core-js/array/from", "babel-runtime/core-js/set", "unicode-properties", "dfa", "clone", "tiny-inflate", "brotli/decompress", "events"], factory);
 	else {
-		var a = typeof exports === 'object' ? factory(require("lodash"), require("unicode-trie"), require("stream"), require("zlib"), require("restructure"), require("babel-runtime/core-js/object/get-own-property-descriptor"), require("babel-runtime/core-js/get-iterator"), require("babel-runtime/core-js/object/freeze"), require("babel-runtime/core-js/object/keys"), require("babel-runtime/helpers/typeof"), require("babel-runtime/core-js/object/define-property"), require("babel-runtime/helpers/classCallCheck"), require("babel-runtime/helpers/createClass"), require("babel-runtime/core-js/map"), require("babel-runtime/core-js/object/get-prototype-of"), require("babel-runtime/helpers/possibleConstructorReturn"), require("babel-runtime/helpers/inherits"), require("restructure/src/utils"), require("babel-runtime/core-js/object/define-properties"), require("deep-equal"), require("babel-runtime/helpers/get"), require("babel-runtime/core-js/object/assign"), require("babel-runtime/helpers/toConsumableArray"), require("babel-runtime/core-js/string/from-code-point"), require("babel-runtime/helpers/slicedToArray"), require("babel-runtime/core-js/array/from"), require("babel-runtime/core-js/set"), require("unicode-properties"), require("dfa"), require("clone"), require("tiny-inflate"), require("brotli/decompress"), (function webpackLoadOptionalExternalModule() { try { return require("iconv-lite"); } catch(e) {} }()), require("events")) : factory(root["lodash"], root["unicode-trie"], root["stream"], root["zlib"], root["restructure"], root["babel-runtime/core-js/object/get-own-property-descriptor"], root["babel-runtime/core-js/get-iterator"], root["babel-runtime/core-js/object/freeze"], root["babel-runtime/core-js/object/keys"], root["babel-runtime/helpers/typeof"], root["babel-runtime/core-js/object/define-property"], root["babel-runtime/helpers/classCallCheck"], root["babel-runtime/helpers/createClass"], root["babel-runtime/core-js/map"], root["babel-runtime/core-js/object/get-prototype-of"], root["babel-runtime/helpers/possibleConstructorReturn"], root["babel-runtime/helpers/inherits"], root["restructure/src/utils"], root["babel-runtime/core-js/object/define-properties"], root["deep-equal"], root["babel-runtime/helpers/get"], root["babel-runtime/core-js/object/assign"], root["babel-runtime/helpers/toConsumableArray"], root["babel-runtime/core-js/string/from-code-point"], root["babel-runtime/helpers/slicedToArray"], root["babel-runtime/core-js/array/from"], root["babel-runtime/core-js/set"], root["unicode-properties"], root["dfa"], root["clone"], root["tiny-inflate"], root["brotli/decompress"], root["iconv-lite"], root["events"]);
+		var a = typeof exports === 'object' ? factory(require("lodash"), require("unicode-trie"), require("stream"), require("zlib"), (function webpackLoadOptionalExternalModule() { try { return require("iconv-lite"); } catch(e) {} }()), require("util"), require("babel-runtime/core-js/object/get-own-property-descriptor"), require("babel-runtime/core-js/get-iterator"), require("babel-runtime/core-js/object/freeze"), require("babel-runtime/core-js/object/keys"), require("babel-runtime/helpers/typeof"), require("babel-runtime/core-js/object/define-property"), require("babel-runtime/helpers/classCallCheck"), require("babel-runtime/helpers/createClass"), require("babel-runtime/core-js/map"), require("babel-runtime/core-js/object/get-prototype-of"), require("babel-runtime/helpers/possibleConstructorReturn"), require("babel-runtime/helpers/inherits"), require("babel-runtime/core-js/object/define-properties"), require("deep-equal"), require("babel-runtime/helpers/get"), require("babel-runtime/core-js/object/assign"), require("babel-runtime/helpers/toConsumableArray"), require("babel-runtime/core-js/string/from-code-point"), require("babel-runtime/helpers/slicedToArray"), require("babel-runtime/core-js/array/from"), require("babel-runtime/core-js/set"), require("unicode-properties"), require("dfa"), require("clone"), require("tiny-inflate"), require("brotli/decompress"), require("events")) : factory(root["lodash"], root["unicode-trie"], root["stream"], root["zlib"], root["iconv-lite"], root["util"], root["babel-runtime/core-js/object/get-own-property-descriptor"], root["babel-runtime/core-js/get-iterator"], root["babel-runtime/core-js/object/freeze"], root["babel-runtime/core-js/object/keys"], root["babel-runtime/helpers/typeof"], root["babel-runtime/core-js/object/define-property"], root["babel-runtime/helpers/classCallCheck"], root["babel-runtime/helpers/createClass"], root["babel-runtime/core-js/map"], root["babel-runtime/core-js/object/get-prototype-of"], root["babel-runtime/helpers/possibleConstructorReturn"], root["babel-runtime/helpers/inherits"], root["babel-runtime/core-js/object/define-properties"], root["deep-equal"], root["babel-runtime/helpers/get"], root["babel-runtime/core-js/object/assign"], root["babel-runtime/helpers/toConsumableArray"], root["babel-runtime/core-js/string/from-code-point"], root["babel-runtime/helpers/slicedToArray"], root["babel-runtime/core-js/array/from"], root["babel-runtime/core-js/set"], root["unicode-properties"], root["dfa"], root["clone"], root["tiny-inflate"], root["brotli/decompress"], root["events"]);
 		for(var i in a) (typeof exports === 'object' ? exports : root)[i] = a[i];
 	}
-})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_9__, __WEBPACK_EXTERNAL_MODULE_24__, __WEBPACK_EXTERNAL_MODULE_27__, __WEBPACK_EXTERNAL_MODULE_37__, __WEBPACK_EXTERNAL_MODULE_38__, __WEBPACK_EXTERNAL_MODULE_39__, __WEBPACK_EXTERNAL_MODULE_40__, __WEBPACK_EXTERNAL_MODULE_41__, __WEBPACK_EXTERNAL_MODULE_42__, __WEBPACK_EXTERNAL_MODULE_43__, __WEBPACK_EXTERNAL_MODULE_44__, __WEBPACK_EXTERNAL_MODULE_45__, __WEBPACK_EXTERNAL_MODULE_46__, __WEBPACK_EXTERNAL_MODULE_47__, __WEBPACK_EXTERNAL_MODULE_48__, __WEBPACK_EXTERNAL_MODULE_49__, __WEBPACK_EXTERNAL_MODULE_50__, __WEBPACK_EXTERNAL_MODULE_51__, __WEBPACK_EXTERNAL_MODULE_52__, __WEBPACK_EXTERNAL_MODULE_53__, __WEBPACK_EXTERNAL_MODULE_54__, __WEBPACK_EXTERNAL_MODULE_55__, __WEBPACK_EXTERNAL_MODULE_56__, __WEBPACK_EXTERNAL_MODULE_57__, __WEBPACK_EXTERNAL_MODULE_58__, __WEBPACK_EXTERNAL_MODULE_59__, __WEBPACK_EXTERNAL_MODULE_60__, __WEBPACK_EXTERNAL_MODULE_61__, __WEBPACK_EXTERNAL_MODULE_62__, __WEBPACK_EXTERNAL_MODULE_63__, __WEBPACK_EXTERNAL_MODULE_64__, __WEBPACK_EXTERNAL_MODULE_65__, __WEBPACK_EXTERNAL_MODULE_71__) {
+})(this, function(__WEBPACK_EXTERNAL_MODULE_2__, __WEBPACK_EXTERNAL_MODULE_9__, __WEBPACK_EXTERNAL_MODULE_24__, __WEBPACK_EXTERNAL_MODULE_27__, __WEBPACK_EXTERNAL_MODULE_40__, __WEBPACK_EXTERNAL_MODULE_45__, __WEBPACK_EXTERNAL_MODULE_56__, __WEBPACK_EXTERNAL_MODULE_57__, __WEBPACK_EXTERNAL_MODULE_58__, __WEBPACK_EXTERNAL_MODULE_59__, __WEBPACK_EXTERNAL_MODULE_60__, __WEBPACK_EXTERNAL_MODULE_61__, __WEBPACK_EXTERNAL_MODULE_62__, __WEBPACK_EXTERNAL_MODULE_63__, __WEBPACK_EXTERNAL_MODULE_64__, __WEBPACK_EXTERNAL_MODULE_65__, __WEBPACK_EXTERNAL_MODULE_66__, __WEBPACK_EXTERNAL_MODULE_67__, __WEBPACK_EXTERNAL_MODULE_68__, __WEBPACK_EXTERNAL_MODULE_69__, __WEBPACK_EXTERNAL_MODULE_70__, __WEBPACK_EXTERNAL_MODULE_71__, __WEBPACK_EXTERNAL_MODULE_72__, __WEBPACK_EXTERNAL_MODULE_73__, __WEBPACK_EXTERNAL_MODULE_74__, __WEBPACK_EXTERNAL_MODULE_75__, __WEBPACK_EXTERNAL_MODULE_76__, __WEBPACK_EXTERNAL_MODULE_77__, __WEBPACK_EXTERNAL_MODULE_78__, __WEBPACK_EXTERNAL_MODULE_79__, __WEBPACK_EXTERNAL_MODULE_80__, __WEBPACK_EXTERNAL_MODULE_81__, __WEBPACK_EXTERNAL_MODULE_87__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -188,9 +188,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	var FontProvider = __webpack_require__(3);
 	var LayoutBuilder = __webpack_require__(4);
 	var PdfKit = __webpack_require__(23);
-	var sizes = __webpack_require__(83);
-	var ImageMeasure = __webpack_require__(84);
-	var textDecorator = __webpack_require__(85);
+	var sizes = __webpack_require__(99);
+	var ImageMeasure = __webpack_require__(100);
+	var textDecorator = __webpack_require__(101);
 
 	_.noConflict();
 
@@ -5293,11 +5293,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    mixin(__webpack_require__(33));
 
-	    mixin(__webpack_require__(69));
+	    mixin(__webpack_require__(85));
 
-	    mixin(__webpack_require__(76));
+	    mixin(__webpack_require__(92));
 
-	    mixin(__webpack_require__(82));
+	    mixin(__webpack_require__(98));
 
 	    PDFDocument.prototype.addPage = function(options) {
 	      var pages;
@@ -7201,9 +7201,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  module.exports = PDFFont;
 
-	  StandardFont = __webpack_require__(66);
+	  StandardFont = __webpack_require__(82);
 
-	  EmbeddedFont = __webpack_require__(68);
+	  EmbeddedFont = __webpack_require__(84);
 
 	}).call(this);
 
@@ -7217,34 +7217,34 @@ return /******/ (function(modules) { // webpackBootstrap
 	function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 	var r = _interopDefault(__webpack_require__(37));
-	var _Object$getOwnPropertyDescriptor = _interopDefault(__webpack_require__(38));
-	var _getIterator = _interopDefault(__webpack_require__(39));
-	var _Object$freeze = _interopDefault(__webpack_require__(40));
-	var _Object$keys = _interopDefault(__webpack_require__(41));
-	var _typeof = _interopDefault(__webpack_require__(42));
-	var _Object$defineProperty = _interopDefault(__webpack_require__(43));
-	var _classCallCheck = _interopDefault(__webpack_require__(44));
-	var _createClass = _interopDefault(__webpack_require__(45));
-	var _Map = _interopDefault(__webpack_require__(46));
-	var _Object$getPrototypeOf = _interopDefault(__webpack_require__(47));
-	var _possibleConstructorReturn = _interopDefault(__webpack_require__(48));
-	var _inherits = _interopDefault(__webpack_require__(49));
-	var restructure_src_utils = __webpack_require__(50);
-	var _Object$defineProperties = _interopDefault(__webpack_require__(51));
-	var isEqual = _interopDefault(__webpack_require__(52));
-	var _get = _interopDefault(__webpack_require__(53));
-	var _Object$assign = _interopDefault(__webpack_require__(54));
-	var _toConsumableArray = _interopDefault(__webpack_require__(55));
-	var _String$fromCodePoint = _interopDefault(__webpack_require__(56));
-	var _slicedToArray = _interopDefault(__webpack_require__(57));
-	var _Array$from = _interopDefault(__webpack_require__(58));
-	var _Set = _interopDefault(__webpack_require__(59));
-	var unicode = _interopDefault(__webpack_require__(60));
+	var _Object$getOwnPropertyDescriptor = _interopDefault(__webpack_require__(56));
+	var _getIterator = _interopDefault(__webpack_require__(57));
+	var _Object$freeze = _interopDefault(__webpack_require__(58));
+	var _Object$keys = _interopDefault(__webpack_require__(59));
+	var _typeof = _interopDefault(__webpack_require__(60));
+	var _Object$defineProperty = _interopDefault(__webpack_require__(61));
+	var _classCallCheck = _interopDefault(__webpack_require__(62));
+	var _createClass = _interopDefault(__webpack_require__(63));
+	var _Map = _interopDefault(__webpack_require__(64));
+	var _Object$getPrototypeOf = _interopDefault(__webpack_require__(65));
+	var _possibleConstructorReturn = _interopDefault(__webpack_require__(66));
+	var _inherits = _interopDefault(__webpack_require__(67));
+	var restructure_src_utils = __webpack_require__(43);
+	var _Object$defineProperties = _interopDefault(__webpack_require__(68));
+	var isEqual = _interopDefault(__webpack_require__(69));
+	var _get = _interopDefault(__webpack_require__(70));
+	var _Object$assign = _interopDefault(__webpack_require__(71));
+	var _toConsumableArray = _interopDefault(__webpack_require__(72));
+	var _String$fromCodePoint = _interopDefault(__webpack_require__(73));
+	var _slicedToArray = _interopDefault(__webpack_require__(74));
+	var _Array$from = _interopDefault(__webpack_require__(75));
+	var _Set = _interopDefault(__webpack_require__(76));
+	var unicode = _interopDefault(__webpack_require__(77));
 	var UnicodeTrie = _interopDefault(__webpack_require__(9));
-	var StateMachine = _interopDefault(__webpack_require__(61));
-	var cloneDeep = _interopDefault(__webpack_require__(62));
-	var inflate = _interopDefault(__webpack_require__(63));
-	var brotli = _interopDefault(__webpack_require__(64));
+	var StateMachine = _interopDefault(__webpack_require__(78));
+	var cloneDeep = _interopDefault(__webpack_require__(79));
+	var inflate = _interopDefault(__webpack_require__(80));
+	var brotli = _interopDefault(__webpack_require__(81));
 
 	var fs = __webpack_require__(10);
 
@@ -10945,7 +10945,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	// iconv-lite is an optional dependency.
 	try {
-	  var iconv = __webpack_require__(65);
+	  var iconv = __webpack_require__(40);
 	} catch (err) {}
 
 	var CmapProcessor = (_class$1 = function () {
@@ -21372,51 +21372,701 @@ return /******/ (function(modules) { // webpackBootstrap
 
 /***/ },
 /* 37 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_37__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var key, val, _ref, _ref1;
+
+	  exports.EncodeStream = __webpack_require__(38);
+
+	  exports.DecodeStream = __webpack_require__(39);
+
+	  exports.Array = __webpack_require__(41);
+
+	  exports.LazyArray = __webpack_require__(44);
+
+	  exports.Bitfield = __webpack_require__(46);
+
+	  exports.Boolean = __webpack_require__(47);
+
+	  exports.Buffer = __webpack_require__(48);
+
+	  exports.Enum = __webpack_require__(49);
+
+	  exports.Optional = __webpack_require__(50);
+
+	  exports.Reserved = __webpack_require__(51);
+
+	  exports.String = __webpack_require__(52);
+
+	  exports.Struct = __webpack_require__(53);
+
+	  exports.VersionedStruct = __webpack_require__(54);
+
+	  _ref = __webpack_require__(42);
+	  for (key in _ref) {
+	    val = _ref[key];
+	    exports[key] = val;
+	  }
+
+	  _ref1 = __webpack_require__(55);
+	  for (key in _ref1) {
+	    val = _ref1[key];
+	    exports[key] = val;
+	  }
+
+	}).call(this);
+
 
 /***/ },
 /* 38 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_38__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var DecodeStream, EncodeStream, iconv, stream,
+	    __hasProp = {}.hasOwnProperty,
+	    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+	  stream = __webpack_require__(24);
+
+	  DecodeStream = __webpack_require__(39);
+
+	  try {
+	    iconv = __webpack_require__(40);
+	  } catch (_error) {}
+
+	  EncodeStream = (function(_super) {
+	    var key;
+
+	    __extends(EncodeStream, _super);
+
+	    function EncodeStream(bufferSize) {
+	      if (bufferSize == null) {
+	        bufferSize = 65536;
+	      }
+	      EncodeStream.__super__.constructor.apply(this, arguments);
+	      this.buffer = new Buffer(bufferSize);
+	      this.bufferOffset = 0;
+	      this.pos = 0;
+	    }
+
+	    for (key in Buffer.prototype) {
+	      if (key.slice(0, 5) === 'write') {
+	        (function(key) {
+	          var bytes;
+	          bytes = +DecodeStream.TYPES[key.replace(/write|[BL]E/g, '')];
+	          return EncodeStream.prototype[key] = function(value) {
+	            this.ensure(bytes);
+	            this.buffer[key](value, this.bufferOffset);
+	            this.bufferOffset += bytes;
+	            return this.pos += bytes;
+	          };
+	        })(key);
+	      }
+	    }
+
+	    EncodeStream.prototype._read = function() {};
+
+	    EncodeStream.prototype.ensure = function(bytes) {
+	      if (this.bufferOffset + bytes > this.buffer.length) {
+	        return this.flush();
+	      }
+	    };
+
+	    EncodeStream.prototype.flush = function() {
+	      if (this.bufferOffset > 0) {
+	        this.push(new Buffer(this.buffer.slice(0, this.bufferOffset)));
+	        return this.bufferOffset = 0;
+	      }
+	    };
+
+	    EncodeStream.prototype.writeBuffer = function(buffer) {
+	      this.flush();
+	      this.push(buffer);
+	      return this.pos += buffer.length;
+	    };
+
+	    EncodeStream.prototype.writeString = function(string, encoding) {
+	      var buf, byte, i, _i, _ref;
+	      if (encoding == null) {
+	        encoding = 'ascii';
+	      }
+	      switch (encoding) {
+	        case 'utf16le':
+	        case 'ucs2':
+	        case 'utf8':
+	        case 'ascii':
+	          return this.writeBuffer(new Buffer(string, encoding));
+	        case 'utf16be':
+	          buf = new Buffer(string, 'utf16le');
+	          for (i = _i = 0, _ref = buf.length - 1; _i < _ref; i = _i += 2) {
+	            byte = buf[i];
+	            buf[i] = buf[i + 1];
+	            buf[i + 1] = byte;
+	          }
+	          return this.writeBuffer(buf);
+	        default:
+	          if (iconv) {
+	            return this.writeBuffer(iconv.encode(string, encoding));
+	          } else {
+	            throw new Error('Install iconv-lite to enable additional string encodings.');
+	          }
+	      }
+	    };
+
+	    EncodeStream.prototype.writeUInt24BE = function(val) {
+	      this.ensure(3);
+	      this.buffer[this.bufferOffset++] = val >>> 16 & 0xff;
+	      this.buffer[this.bufferOffset++] = val >>> 8 & 0xff;
+	      this.buffer[this.bufferOffset++] = val & 0xff;
+	      return this.pos += 3;
+	    };
+
+	    EncodeStream.prototype.writeUInt24LE = function(val) {
+	      this.ensure(3);
+	      this.buffer[this.bufferOffset++] = val & 0xff;
+	      this.buffer[this.bufferOffset++] = val >>> 8 & 0xff;
+	      this.buffer[this.bufferOffset++] = val >>> 16 & 0xff;
+	      return this.pos += 3;
+	    };
+
+	    EncodeStream.prototype.writeInt24BE = function(val) {
+	      if (val >= 0) {
+	        return this.writeUInt24BE(val);
+	      } else {
+	        return this.writeUInt24BE(val + 0xffffff + 1);
+	      }
+	    };
+
+	    EncodeStream.prototype.writeInt24LE = function(val) {
+	      if (val >= 0) {
+	        return this.writeUInt24LE(val);
+	      } else {
+	        return this.writeUInt24LE(val + 0xffffff + 1);
+	      }
+	    };
+
+	    EncodeStream.prototype.fill = function(val, length) {
+	      var buf;
+	      if (length < this.buffer.length) {
+	        this.ensure(length);
+	        this.buffer.fill(val, this.bufferOffset, this.bufferOffset + length);
+	        this.bufferOffset += length;
+	        return this.pos += length;
+	      } else {
+	        buf = new Buffer(length);
+	        buf.fill(val);
+	        return this.writeBuffer(buf);
+	      }
+	    };
+
+	    EncodeStream.prototype.end = function() {
+	      this.flush();
+	      return this.push(null);
+	    };
+
+	    return EncodeStream;
+
+	  })(stream.Readable);
+
+	  module.exports = EncodeStream;
+
+	}).call(this);
+
 
 /***/ },
 /* 39 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_39__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var DecodeStream, iconv;
+
+	  try {
+	    iconv = __webpack_require__(40);
+	  } catch (_error) {}
+
+	  DecodeStream = (function() {
+	    var key;
+
+	    function DecodeStream(buffer) {
+	      this.buffer = buffer;
+	      this.pos = 0;
+	      this.length = this.buffer.length;
+	    }
+
+	    DecodeStream.TYPES = {
+	      UInt8: 1,
+	      UInt16: 2,
+	      UInt24: 3,
+	      UInt32: 4,
+	      Int8: 1,
+	      Int16: 2,
+	      Int24: 3,
+	      Int32: 4,
+	      Float: 4,
+	      Double: 8
+	    };
+
+	    for (key in Buffer.prototype) {
+	      if (key.slice(0, 4) === 'read') {
+	        (function(key) {
+	          var bytes;
+	          bytes = DecodeStream.TYPES[key.replace(/read|[BL]E/g, '')];
+	          return DecodeStream.prototype[key] = function() {
+	            var ret;
+	            ret = this.buffer[key](this.pos);
+	            this.pos += bytes;
+	            return ret;
+	          };
+	        })(key);
+	      }
+	    }
+
+	    DecodeStream.prototype.readString = function(length, encoding) {
+	      var buf, byte, i, _i, _ref;
+	      if (encoding == null) {
+	        encoding = 'ascii';
+	      }
+	      switch (encoding) {
+	        case 'utf16le':
+	        case 'ucs2':
+	        case 'utf8':
+	        case 'ascii':
+	          return this.buffer.toString(encoding, this.pos, this.pos += length);
+	        case 'utf16be':
+	          buf = new Buffer(this.readBuffer(length));
+	          for (i = _i = 0, _ref = buf.length - 1; _i < _ref; i = _i += 2) {
+	            byte = buf[i];
+	            buf[i] = buf[i + 1];
+	            buf[i + 1] = byte;
+	          }
+	          return buf.toString('utf16le');
+	        default:
+	          buf = this.readBuffer(length);
+	          if (iconv) {
+	            return iconv.decode(buf, encoding);
+	          }
+	          return buf;
+	      }
+	    };
+
+	    DecodeStream.prototype.readBuffer = function(length) {
+	      return this.buffer.slice(this.pos, this.pos += length);
+	    };
+
+	    DecodeStream.prototype.readUInt24BE = function() {
+	      return (this.readUInt16BE() << 8) + this.readUInt8();
+	    };
+
+	    DecodeStream.prototype.readUInt24LE = function() {
+	      return this.readUInt16LE() + (this.readUInt8() << 16);
+	    };
+
+	    DecodeStream.prototype.readInt24BE = function() {
+	      return (this.readInt16BE() << 8) + this.readUInt8();
+	    };
+
+	    DecodeStream.prototype.readInt24LE = function() {
+	      return this.readUInt16LE() + (this.readInt8() << 16);
+	    };
+
+	    return DecodeStream;
+
+	  })();
+
+	  module.exports = DecodeStream;
+
+	}).call(this);
+
 
 /***/ },
 /* 40 */
 /***/ function(module, exports) {
 
+	if(typeof __WEBPACK_EXTERNAL_MODULE_40__ === 'undefined') {var e = new Error("Cannot find module \"iconv-lite\""); e.code = 'MODULE_NOT_FOUND'; throw e;}
 	module.exports = __WEBPACK_EXTERNAL_MODULE_40__;
 
 /***/ },
 /* 41 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_41__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var ArrayT, NumberT, utils;
+
+	  NumberT = __webpack_require__(42).Number;
+
+	  utils = __webpack_require__(43);
+
+	  ArrayT = (function() {
+	    function ArrayT(type, length, lengthType) {
+	      this.type = type;
+	      this.length = length;
+	      this.lengthType = lengthType != null ? lengthType : 'count';
+	    }
+
+	    ArrayT.prototype.decode = function(stream, parent) {
+	      var ctx, i, length, pos, res, target, _i;
+	      pos = stream.pos;
+	      res = [];
+	      ctx = parent;
+	      if (this.length != null) {
+	        length = utils.resolveLength(this.length, stream, parent);
+	      }
+	      if (this.length instanceof NumberT) {
+	        Object.defineProperties(res, {
+	          parent: {
+	            value: parent
+	          },
+	          _startOffset: {
+	            value: pos
+	          },
+	          _currentOffset: {
+	            value: 0,
+	            writable: true
+	          },
+	          _length: {
+	            value: length
+	          }
+	        });
+	        ctx = res;
+	      }
+	      if ((length == null) || this.lengthType === 'bytes') {
+	        target = length != null ? stream.pos + length : (parent != null ? parent._length : void 0) ? parent._startOffset + parent._length : stream.length;
+	        while (stream.pos < target) {
+	          res.push(this.type.decode(stream, ctx));
+	        }
+	      } else {
+	        for (i = _i = 0; _i < length; i = _i += 1) {
+	          res.push(this.type.decode(stream, ctx));
+	        }
+	      }
+	      return res;
+	    };
+
+	    ArrayT.prototype.size = function(array, ctx) {
+	      var item, size, _i, _len;
+	      if (!array) {
+	        return this.type.size(null, ctx) * utils.resolveLength(this.length, null, ctx);
+	      }
+	      size = 0;
+	      if (this.length instanceof NumberT) {
+	        size += this.length.size();
+	        ctx = {
+	          parent: ctx
+	        };
+	      }
+	      for (_i = 0, _len = array.length; _i < _len; _i++) {
+	        item = array[_i];
+	        size += this.type.size(item, ctx);
+	      }
+	      return size;
+	    };
+
+	    ArrayT.prototype.encode = function(stream, array, parent) {
+	      var ctx, i, item, ptr, _i, _len;
+	      ctx = parent;
+	      if (this.length instanceof NumberT) {
+	        ctx = {
+	          pointers: [],
+	          startOffset: stream.pos,
+	          parent: parent
+	        };
+	        ctx.pointerOffset = stream.pos + this.size(array, ctx);
+	        this.length.encode(stream, array.length);
+	      }
+	      for (_i = 0, _len = array.length; _i < _len; _i++) {
+	        item = array[_i];
+	        this.type.encode(stream, item, ctx);
+	      }
+	      if (this.length instanceof NumberT) {
+	        i = 0;
+	        while (i < ctx.pointers.length) {
+	          ptr = ctx.pointers[i++];
+	          ptr.type.encode(stream, ptr.val);
+	        }
+	      }
+	    };
+
+	    return ArrayT;
+
+	  })();
+
+	  module.exports = ArrayT;
+
+	}).call(this);
+
 
 /***/ },
 /* 42 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_42__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var DecodeStream, Fixed, NumberT,
+	    __hasProp = {}.hasOwnProperty,
+	    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+	  DecodeStream = __webpack_require__(39);
+
+	  NumberT = (function() {
+	    function NumberT(type, endian) {
+	      this.type = type;
+	      this.endian = endian != null ? endian : 'BE';
+	      this.fn = this.type;
+	      if (this.type[this.type.length - 1] !== '8') {
+	        this.fn += this.endian;
+	      }
+	    }
+
+	    NumberT.prototype.size = function() {
+	      return DecodeStream.TYPES[this.type];
+	    };
+
+	    NumberT.prototype.decode = function(stream) {
+	      return stream['read' + this.fn]();
+	    };
+
+	    NumberT.prototype.encode = function(stream, val) {
+	      return stream['write' + this.fn](val);
+	    };
+
+	    return NumberT;
+
+	  })();
+
+	  exports.Number = NumberT;
+
+	  exports.uint8 = new NumberT('UInt8');
+
+	  exports.uint16be = exports.uint16 = new NumberT('UInt16', 'BE');
+
+	  exports.uint16le = new NumberT('UInt16', 'LE');
+
+	  exports.uint24be = exports.uint24 = new NumberT('UInt24', 'BE');
+
+	  exports.uint24le = new NumberT('UInt24', 'LE');
+
+	  exports.uint32be = exports.uint32 = new NumberT('UInt32', 'BE');
+
+	  exports.uint32le = new NumberT('UInt32', 'LE');
+
+	  exports.int8 = new NumberT('Int8');
+
+	  exports.int16be = exports.int16 = new NumberT('Int16', 'BE');
+
+	  exports.int16le = new NumberT('Int16', 'LE');
+
+	  exports.int24be = exports.int24 = new NumberT('Int24', 'BE');
+
+	  exports.int24le = new NumberT('Int24', 'LE');
+
+	  exports.int32be = exports.int32 = new NumberT('Int32', 'BE');
+
+	  exports.int32le = new NumberT('Int32', 'LE');
+
+	  exports.floatbe = exports.float = new NumberT('Float', 'BE');
+
+	  exports.floatle = new NumberT('Float', 'LE');
+
+	  exports.doublebe = exports.double = new NumberT('Double', 'BE');
+
+	  exports.doublele = new NumberT('Double', 'LE');
+
+	  Fixed = (function(_super) {
+	    __extends(Fixed, _super);
+
+	    function Fixed(size, endian, fracBits) {
+	      if (fracBits == null) {
+	        fracBits = size >> 1;
+	      }
+	      Fixed.__super__.constructor.call(this, "Int" + size, endian);
+	      this._point = 1 << fracBits;
+	    }
+
+	    Fixed.prototype.decode = function(stream) {
+	      return Fixed.__super__.decode.call(this, stream) / this._point;
+	    };
+
+	    Fixed.prototype.encode = function(stream, val) {
+	      return Fixed.__super__.encode.call(this, stream, val * this._point | 0);
+	    };
+
+	    return Fixed;
+
+	  })(NumberT);
+
+	  exports.Fixed = Fixed;
+
+	  exports.fixed16be = exports.fixed16 = new Fixed(16, 'BE');
+
+	  exports.fixed16le = new Fixed(16, 'LE');
+
+	  exports.fixed32be = exports.fixed32 = new Fixed(32, 'BE');
+
+	  exports.fixed32le = new Fixed(32, 'LE');
+
+	}).call(this);
+
 
 /***/ },
 /* 43 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_43__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var NumberT, PropertyDescriptor;
+
+	  NumberT = __webpack_require__(42).Number;
+
+	  exports.resolveLength = function(length, stream, parent) {
+	    var res;
+	    if (typeof length === 'number') {
+	      res = length;
+	    } else if (typeof length === 'function') {
+	      res = length.call(parent, parent);
+	    } else if (parent && typeof length === 'string') {
+	      res = parent[length];
+	    } else if (stream && length instanceof NumberT) {
+	      res = length.decode(stream);
+	    }
+	    if (isNaN(res)) {
+	      throw new Error('Not a fixed size');
+	    }
+	    return res;
+	  };
+
+	  PropertyDescriptor = (function() {
+	    function PropertyDescriptor(opts) {
+	      var key, val;
+	      if (opts == null) {
+	        opts = {};
+	      }
+	      this.enumerable = true;
+	      this.configurable = true;
+	      for (key in opts) {
+	        val = opts[key];
+	        this[key] = val;
+	      }
+	    }
+
+	    return PropertyDescriptor;
+
+	  })();
+
+	  exports.PropertyDescriptor = PropertyDescriptor;
+
+	}).call(this);
+
 
 /***/ },
 /* 44 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_44__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var ArrayT, LazyArray, LazyArrayT, NumberT, inspect, utils,
+	    __hasProp = {}.hasOwnProperty,
+	    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+	  ArrayT = __webpack_require__(41);
+
+	  NumberT = __webpack_require__(42).Number;
+
+	  utils = __webpack_require__(43);
+
+	  inspect = __webpack_require__(45).inspect;
+
+	  LazyArrayT = (function(_super) {
+	    __extends(LazyArrayT, _super);
+
+	    function LazyArrayT() {
+	      return LazyArrayT.__super__.constructor.apply(this, arguments);
+	    }
+
+	    LazyArrayT.prototype.decode = function(stream, parent) {
+	      var length, pos, res;
+	      pos = stream.pos;
+	      length = utils.resolveLength(this.length, stream, parent);
+	      if (this.length instanceof NumberT) {
+	        parent = {
+	          parent: parent,
+	          _startOffset: pos,
+	          _currentOffset: 0,
+	          _length: length
+	        };
+	      }
+	      res = new LazyArray(this.type, length, stream, parent);
+	      stream.pos += length * this.type.size(null, parent);
+	      return res;
+	    };
+
+	    LazyArrayT.prototype.size = function(val, ctx) {
+	      if (val instanceof LazyArray) {
+	        val = val.toArray();
+	      }
+	      return LazyArrayT.__super__.size.call(this, val, ctx);
+	    };
+
+	    LazyArrayT.prototype.encode = function(stream, val, ctx) {
+	      if (val instanceof LazyArray) {
+	        val = val.toArray();
+	      }
+	      return LazyArrayT.__super__.encode.call(this, stream, val, ctx);
+	    };
+
+	    return LazyArrayT;
+
+	  })(ArrayT);
+
+	  LazyArray = (function() {
+	    function LazyArray(type, length, stream, ctx) {
+	      this.type = type;
+	      this.length = length;
+	      this.stream = stream;
+	      this.ctx = ctx;
+	      this.base = this.stream.pos;
+	      this.items = [];
+	    }
+
+	    LazyArray.prototype.get = function(index) {
+	      var pos;
+	      if (index < 0 || index >= this.length) {
+	        return void 0;
+	      }
+	      if (this.items[index] == null) {
+	        pos = this.stream.pos;
+	        this.stream.pos = this.base + this.type.size(null, this.ctx) * index;
+	        this.items[index] = this.type.decode(this.stream, this.ctx);
+	        this.stream.pos = pos;
+	      }
+	      return this.items[index];
+	    };
+
+	    LazyArray.prototype.toArray = function() {
+	      var i, _i, _ref, _results;
+	      _results = [];
+	      for (i = _i = 0, _ref = this.length; _i < _ref; i = _i += 1) {
+	        _results.push(this.get(i));
+	      }
+	      return _results;
+	    };
+
+	    LazyArray.prototype.inspect = function() {
+	      return inspect(this.toArray());
+	    };
+
+	    return LazyArray;
+
+	  })();
+
+	  module.exports = LazyArrayT;
+
+	}).call(this);
+
 
 /***/ },
 /* 45 */
@@ -21428,61 +22078,821 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 46 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_46__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Bitfield;
+
+	  Bitfield = (function() {
+	    function Bitfield(type, flags) {
+	      this.type = type;
+	      this.flags = flags != null ? flags : [];
+	    }
+
+	    Bitfield.prototype.decode = function(stream) {
+	      var flag, i, res, val, _i, _len, _ref;
+	      val = this.type.decode(stream);
+	      res = {};
+	      _ref = this.flags;
+	      for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+	        flag = _ref[i];
+	        if (flag != null) {
+	          res[flag] = !!(val & (1 << i));
+	        }
+	      }
+	      return res;
+	    };
+
+	    Bitfield.prototype.size = function() {
+	      return this.type.size();
+	    };
+
+	    Bitfield.prototype.encode = function(stream, keys) {
+	      var flag, i, val, _i, _len, _ref;
+	      val = 0;
+	      _ref = this.flags;
+	      for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+	        flag = _ref[i];
+	        if (flag != null) {
+	          if (keys[flag]) {
+	            val |= 1 << i;
+	          }
+	        }
+	      }
+	      return this.type.encode(stream, val);
+	    };
+
+	    return Bitfield;
+
+	  })();
+
+	  module.exports = Bitfield;
+
+	}).call(this);
+
 
 /***/ },
 /* 47 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_47__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var BooleanT;
+
+	  BooleanT = (function() {
+	    function BooleanT(type) {
+	      this.type = type;
+	    }
+
+	    BooleanT.prototype.decode = function(stream, parent) {
+	      return !!this.type.decode(stream, parent);
+	    };
+
+	    BooleanT.prototype.size = function(val, parent) {
+	      return this.type.size(val, parent);
+	    };
+
+	    BooleanT.prototype.encode = function(stream, val, parent) {
+	      return this.type.encode(stream, +val, parent);
+	    };
+
+	    return BooleanT;
+
+	  })();
+
+	  module.exports = BooleanT;
+
+	}).call(this);
+
 
 /***/ },
 /* 48 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_48__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var BufferT, NumberT, utils;
+
+	  utils = __webpack_require__(43);
+
+	  NumberT = __webpack_require__(42).Number;
+
+	  BufferT = (function() {
+	    function BufferT(length) {
+	      this.length = length;
+	    }
+
+	    BufferT.prototype.decode = function(stream, parent) {
+	      var length;
+	      length = utils.resolveLength(this.length, stream, parent);
+	      return stream.readBuffer(length);
+	    };
+
+	    BufferT.prototype.size = function(val, parent) {
+	      if (!val) {
+	        return utils.resolveLength(this.length, null, parent);
+	      }
+	      return val.length;
+	    };
+
+	    BufferT.prototype.encode = function(stream, buf, parent) {
+	      if (this.length instanceof NumberT) {
+	        this.length.encode(stream, buf.length);
+	      }
+	      return stream.writeBuffer(buf);
+	    };
+
+	    return BufferT;
+
+	  })();
+
+	  module.exports = BufferT;
+
+	}).call(this);
+
 
 /***/ },
 /* 49 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_49__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Enum;
+
+	  Enum = (function() {
+	    function Enum(type, options) {
+	      this.type = type;
+	      this.options = options != null ? options : [];
+	    }
+
+	    Enum.prototype.decode = function(stream) {
+	      var index;
+	      index = this.type.decode(stream);
+	      return this.options[index] || index;
+	    };
+
+	    Enum.prototype.size = function() {
+	      return this.type.size();
+	    };
+
+	    Enum.prototype.encode = function(stream, val) {
+	      var index;
+	      index = this.options.indexOf(val);
+	      if (index === -1) {
+	        throw new Error("Unknown option in enum: " + val);
+	      }
+	      return this.type.encode(stream, index);
+	    };
+
+	    return Enum;
+
+	  })();
+
+	  module.exports = Enum;
+
+	}).call(this);
+
 
 /***/ },
 /* 50 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_50__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Optional;
+
+	  Optional = (function() {
+	    function Optional(type, condition) {
+	      this.type = type;
+	      this.condition = condition != null ? condition : true;
+	    }
+
+	    Optional.prototype.decode = function(stream, parent) {
+	      var condition;
+	      condition = this.condition;
+	      if (typeof condition === 'function') {
+	        condition = condition.call(parent, parent);
+	      }
+	      if (condition) {
+	        return this.type.decode(stream, parent);
+	      }
+	    };
+
+	    Optional.prototype.size = function(val, parent) {
+	      var condition;
+	      condition = this.condition;
+	      if (typeof condition === 'function') {
+	        condition = condition.call(parent, parent);
+	      }
+	      if (condition) {
+	        return this.type.size(val, parent);
+	      } else {
+	        return 0;
+	      }
+	    };
+
+	    Optional.prototype.encode = function(stream, val, parent) {
+	      var condition;
+	      condition = this.condition;
+	      if (typeof condition === 'function') {
+	        condition = condition.call(parent, parent);
+	      }
+	      if (condition) {
+	        return this.type.encode(stream, val, parent);
+	      }
+	    };
+
+	    return Optional;
+
+	  })();
+
+	  module.exports = Optional;
+
+	}).call(this);
+
 
 /***/ },
 /* 51 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_51__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Reserved, utils;
+
+	  utils = __webpack_require__(43);
+
+	  Reserved = (function() {
+	    function Reserved(type, count) {
+	      this.type = type;
+	      this.count = count != null ? count : 1;
+	    }
+
+	    Reserved.prototype.decode = function(stream, parent) {
+	      stream.pos += this.size(null, parent);
+	      return void 0;
+	    };
+
+	    Reserved.prototype.size = function(data, parent) {
+	      var count;
+	      count = utils.resolveLength(this.count, null, parent);
+	      return this.type.size() * count;
+	    };
+
+	    Reserved.prototype.encode = function(stream, val, parent) {
+	      return stream.fill(0, this.size(val, parent));
+	    };
+
+	    return Reserved;
+
+	  })();
+
+	  module.exports = Reserved;
+
+	}).call(this);
+
 
 /***/ },
 /* 52 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_52__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var NumberT, StringT, utils;
+
+	  NumberT = __webpack_require__(42).Number;
+
+	  utils = __webpack_require__(43);
+
+	  StringT = (function() {
+	    function StringT(length, encoding) {
+	      this.length = length;
+	      this.encoding = encoding != null ? encoding : 'ascii';
+	    }
+
+	    StringT.prototype.decode = function(stream, parent) {
+	      var buffer, encoding, length, pos, string;
+	      length = (function() {
+	        if (this.length != null) {
+	          return utils.resolveLength(this.length, stream, parent);
+	        } else {
+	          buffer = stream.buffer, length = stream.length, pos = stream.pos;
+	          while (pos < length && buffer[pos] !== 0x00) {
+	            ++pos;
+	          }
+	          return pos - stream.pos;
+	        }
+	      }).call(this);
+	      encoding = this.encoding;
+	      if (typeof encoding === 'function') {
+	        encoding = encoding.call(parent, parent) || 'ascii';
+	      }
+	      string = stream.readString(length, encoding);
+	      if ((this.length == null) && stream.pos < stream.length) {
+	        stream.pos++;
+	      }
+	      return string;
+	    };
+
+	    StringT.prototype.size = function(val, parent) {
+	      var encoding, size;
+	      if (!val) {
+	        return utils.resolveLength(this.length, null, parent);
+	      }
+	      encoding = this.encoding;
+	      if (typeof encoding === 'function') {
+	        encoding = encoding.call(parent != null ? parent.val : void 0, parent != null ? parent.val : void 0) || 'ascii';
+	      }
+	      if (encoding === 'utf16be') {
+	        encoding = 'utf16le';
+	      }
+	      size = Buffer.byteLength(val, encoding);
+	      if (this.length instanceof NumberT) {
+	        size += this.length.size();
+	      }
+	      if (this.length == null) {
+	        size++;
+	      }
+	      return size;
+	    };
+
+	    StringT.prototype.encode = function(stream, val, parent) {
+	      var encoding;
+	      encoding = this.encoding;
+	      if (typeof encoding === 'function') {
+	        encoding = encoding.call(parent != null ? parent.val : void 0, parent != null ? parent.val : void 0) || 'ascii';
+	      }
+	      if (this.length instanceof NumberT) {
+	        this.length.encode(stream, Buffer.byteLength(val, encoding));
+	      }
+	      stream.writeString(val, encoding);
+	      if (this.length == null) {
+	        return stream.writeUInt8(0x00);
+	      }
+	    };
+
+	    return StringT;
+
+	  })();
+
+	  module.exports = StringT;
+
+	}).call(this);
+
 
 /***/ },
 /* 53 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_53__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Struct, utils;
+
+	  utils = __webpack_require__(43);
+
+	  Struct = (function() {
+	    function Struct(fields) {
+	      this.fields = fields != null ? fields : {};
+	    }
+
+	    Struct.prototype.decode = function(stream, parent, length) {
+	      var res, _ref;
+	      if (length == null) {
+	        length = 0;
+	      }
+	      res = this._setup(stream, parent, length);
+	      this._parseFields(stream, res, this.fields);
+	      if ((_ref = this.process) != null) {
+	        _ref.call(res, stream);
+	      }
+	      return res;
+	    };
+
+	    Struct.prototype._setup = function(stream, parent, length) {
+	      var res;
+	      res = {};
+	      Object.defineProperties(res, {
+	        parent: {
+	          value: parent
+	        },
+	        _startOffset: {
+	          value: stream.pos
+	        },
+	        _currentOffset: {
+	          value: 0,
+	          writable: true
+	        },
+	        _length: {
+	          value: length
+	        }
+	      });
+	      return res;
+	    };
+
+	    Struct.prototype._parseFields = function(stream, res, fields) {
+	      var key, type, val;
+	      for (key in fields) {
+	        type = fields[key];
+	        if (typeof type === 'function') {
+	          val = type.call(res, res);
+	        } else {
+	          val = type.decode(stream, res);
+	        }
+	        if (val !== void 0) {
+	          if (val instanceof utils.PropertyDescriptor) {
+	            Object.defineProperty(res, key, val);
+	          } else {
+	            res[key] = val;
+	          }
+	        }
+	        res._currentOffset = stream.pos - res._startOffset;
+	      }
+	    };
+
+	    Struct.prototype.size = function(val, parent, includePointers) {
+	      var ctx, key, size, type, _ref;
+	      if (val == null) {
+	        val = {};
+	      }
+	      if (includePointers == null) {
+	        includePointers = true;
+	      }
+	      ctx = {
+	        parent: parent,
+	        val: val,
+	        pointerSize: 0
+	      };
+	      size = 0;
+	      _ref = this.fields;
+	      for (key in _ref) {
+	        type = _ref[key];
+	        if (type.size != null) {
+	          size += type.size(val[key], ctx);
+	        }
+	      }
+	      if (includePointers) {
+	        size += ctx.pointerSize;
+	      }
+	      return size;
+	    };
+
+	    Struct.prototype.encode = function(stream, val, parent) {
+	      var ctx, i, key, ptr, type, _ref, _ref1;
+	      if ((_ref = this.preEncode) != null) {
+	        _ref.call(val, stream);
+	      }
+	      ctx = {
+	        pointers: [],
+	        startOffset: stream.pos,
+	        parent: parent,
+	        val: val,
+	        pointerSize: 0
+	      };
+	      ctx.pointerOffset = stream.pos + this.size(val, ctx, false);
+	      _ref1 = this.fields;
+	      for (key in _ref1) {
+	        type = _ref1[key];
+	        if (type.encode != null) {
+	          type.encode(stream, val[key], ctx);
+	        }
+	      }
+	      i = 0;
+	      while (i < ctx.pointers.length) {
+	        ptr = ctx.pointers[i++];
+	        ptr.type.encode(stream, ptr.val, ptr.parent);
+	      }
+	    };
+
+	    return Struct;
+
+	  })();
+
+	  module.exports = Struct;
+
+	}).call(this);
+
 
 /***/ },
 /* 54 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_54__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Struct, VersionedStruct,
+	    __hasProp = {}.hasOwnProperty,
+	    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+
+	  Struct = __webpack_require__(53);
+
+	  VersionedStruct = (function(_super) {
+	    __extends(VersionedStruct, _super);
+
+	    function VersionedStruct(type, versions) {
+	      this.type = type;
+	      this.versions = versions != null ? versions : {};
+	      if (typeof this.type === 'string') {
+	        this.versionGetter = new Function('parent', "return parent." + this.type);
+	        this.versionSetter = new Function('parent', 'version', "return parent." + this.type + " = version");
+	      }
+	    }
+
+	    VersionedStruct.prototype.decode = function(stream, parent, length) {
+	      var fields, res, _ref;
+	      if (length == null) {
+	        length = 0;
+	      }
+	      res = this._setup(stream, parent, length);
+	      if (typeof this.type === 'string') {
+	        res.version = this.versionGetter(parent);
+	      } else {
+	        res.version = this.type.decode(stream);
+	      }
+	      if (this.versions.header) {
+	        this._parseFields(stream, res, this.versions.header);
+	      }
+	      fields = this.versions[res.version];
+	      if (fields == null) {
+	        throw new Error("Unknown version " + res.version);
+	      }
+	      if (fields instanceof VersionedStruct) {
+	        return fields.decode(stream, parent);
+	      }
+	      this._parseFields(stream, res, fields);
+	      if ((_ref = this.process) != null) {
+	        _ref.call(res, stream);
+	      }
+	      return res;
+	    };
+
+	    VersionedStruct.prototype.size = function(val, parent, includePointers) {
+	      var ctx, fields, key, size, type, _ref;
+	      if (includePointers == null) {
+	        includePointers = true;
+	      }
+	      if (!val) {
+	        throw new Error('Not a fixed size');
+	      }
+	      ctx = {
+	        parent: parent,
+	        val: val,
+	        pointerSize: 0
+	      };
+	      size = 0;
+	      if (typeof this.type !== 'string') {
+	        size += this.type.size(val.version, ctx);
+	      }
+	      if (this.versions.header) {
+	        _ref = this.versions.header;
+	        for (key in _ref) {
+	          type = _ref[key];
+	          if (type.size != null) {
+	            size += type.size(val[key], ctx);
+	          }
+	        }
+	      }
+	      fields = this.versions[val.version];
+	      if (fields == null) {
+	        throw new Error("Unknown version " + val.version);
+	      }
+	      for (key in fields) {
+	        type = fields[key];
+	        if (type.size != null) {
+	          size += type.size(val[key], ctx);
+	        }
+	      }
+	      if (includePointers) {
+	        size += ctx.pointerSize;
+	      }
+	      return size;
+	    };
+
+	    VersionedStruct.prototype.encode = function(stream, val, parent) {
+	      var ctx, fields, i, key, ptr, type, _ref, _ref1;
+	      if ((_ref = this.preEncode) != null) {
+	        _ref.call(val, stream);
+	      }
+	      ctx = {
+	        pointers: [],
+	        startOffset: stream.pos,
+	        parent: parent,
+	        val: val,
+	        pointerSize: 0
+	      };
+	      ctx.pointerOffset = stream.pos + this.size(val, ctx, false);
+	      if (typeof this.type !== 'string') {
+	        this.type.encode(stream, val.version);
+	      }
+	      if (this.versions.header) {
+	        _ref1 = this.versions.header;
+	        for (key in _ref1) {
+	          type = _ref1[key];
+	          if (type.encode != null) {
+	            type.encode(stream, val[key], ctx);
+	          }
+	        }
+	      }
+	      fields = this.versions[val.version];
+	      for (key in fields) {
+	        type = fields[key];
+	        if (type.encode != null) {
+	          type.encode(stream, val[key], ctx);
+	        }
+	      }
+	      i = 0;
+	      while (i < ctx.pointers.length) {
+	        ptr = ctx.pointers[i++];
+	        ptr.type.encode(stream, ptr.val, ptr.parent);
+	      }
+	    };
+
+	    return VersionedStruct;
+
+	  })(Struct);
+
+	  module.exports = VersionedStruct;
+
+	}).call(this);
+
 
 /***/ },
 /* 55 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_55__;
+	// Generated by CoffeeScript 1.7.1
+	(function() {
+	  var Pointer, VoidPointer, utils;
+
+	  utils = __webpack_require__(43);
+
+	  Pointer = (function() {
+	    function Pointer(offsetType, type, options) {
+	      var _base, _base1, _base2, _base3;
+	      this.offsetType = offsetType;
+	      this.type = type;
+	      this.options = options != null ? options : {};
+	      if (this.type === 'void') {
+	        this.type = null;
+	      }
+	      if ((_base = this.options).type == null) {
+	        _base.type = 'local';
+	      }
+	      if ((_base1 = this.options).allowNull == null) {
+	        _base1.allowNull = true;
+	      }
+	      if ((_base2 = this.options).nullValue == null) {
+	        _base2.nullValue = 0;
+	      }
+	      if ((_base3 = this.options).lazy == null) {
+	        _base3.lazy = false;
+	      }
+	      if (this.options.relativeTo) {
+	        this.relativeToGetter = new Function('ctx', "return ctx." + this.options.relativeTo);
+	      }
+	    }
+
+	    Pointer.prototype.decode = function(stream, ctx) {
+	      var c, decodeValue, offset, ptr, relative, val;
+	      offset = this.offsetType.decode(stream, ctx);
+	      if (offset === this.options.nullValue && this.options.allowNull) {
+	        return null;
+	      }
+	      relative = (function() {
+	        switch (this.options.type) {
+	          case 'local':
+	            return ctx._startOffset;
+	          case 'immediate':
+	            return stream.pos - this.offsetType.size();
+	          case 'parent':
+	            return ctx.parent._startOffset;
+	          default:
+	            c = ctx;
+	            while (c.parent) {
+	              c = c.parent;
+	            }
+	            return c._startOffset || 0;
+	        }
+	      }).call(this);
+	      if (this.options.relativeTo) {
+	        relative += this.relativeToGetter(ctx);
+	      }
+	      ptr = offset + relative;
+	      if (this.type != null) {
+	        val = null;
+	        decodeValue = (function(_this) {
+	          return function() {
+	            var pos;
+	            if (val != null) {
+	              return val;
+	            }
+	            pos = stream.pos;
+	            stream.pos = ptr;
+	            val = _this.type.decode(stream, ctx);
+	            stream.pos = pos;
+	            return val;
+	          };
+	        })(this);
+	        if (this.options.lazy) {
+	          return new utils.PropertyDescriptor({
+	            get: decodeValue
+	          });
+	        }
+	        return decodeValue();
+	      } else {
+	        return ptr;
+	      }
+	    };
+
+	    Pointer.prototype.size = function(val, ctx) {
+	      var parent, type;
+	      parent = ctx;
+	      switch (this.options.type) {
+	        case 'local':
+	        case 'immediate':
+	          break;
+	        case 'parent':
+	          ctx = ctx.parent;
+	          break;
+	        default:
+	          while (ctx.parent) {
+	            ctx = ctx.parent;
+	          }
+	      }
+	      type = this.type;
+	      if (type == null) {
+	        if (!(val instanceof VoidPointer)) {
+	          throw new Error("Must be a VoidPointer");
+	        }
+	        type = val.type;
+	        val = val.value;
+	      }
+	      if (val && ctx) {
+	        ctx.pointerSize += type.size(val, parent);
+	      }
+	      return this.offsetType.size();
+	    };
+
+	    Pointer.prototype.encode = function(stream, val, ctx) {
+	      var parent, relative, type;
+	      parent = ctx;
+	      if (val == null) {
+	        this.offsetType.encode(stream, this.options.nullValue);
+	        return;
+	      }
+	      switch (this.options.type) {
+	        case 'local':
+	          relative = ctx.startOffset;
+	          break;
+	        case 'immediate':
+	          relative = stream.pos + this.offsetType.size(val, parent);
+	          break;
+	        case 'parent':
+	          ctx = ctx.parent;
+	          relative = ctx.startOffset;
+	          break;
+	        default:
+	          relative = 0;
+	          while (ctx.parent) {
+	            ctx = ctx.parent;
+	          }
+	      }
+	      if (this.options.relativeTo) {
+	        relative += this.relativeToGetter(parent.val);
+	      }
+	      this.offsetType.encode(stream, ctx.pointerOffset - relative);
+	      type = this.type;
+	      if (type == null) {
+	        if (!(val instanceof VoidPointer)) {
+	          throw new Error("Must be a VoidPointer");
+	        }
+	        type = val.type;
+	        val = val.value;
+	      }
+	      ctx.pointers.push({
+	        type: type,
+	        val: val,
+	        parent: parent
+	      });
+	      return ctx.pointerOffset += type.size(val, parent);
+	    };
+
+	    return Pointer;
+
+	  })();
+
+	  VoidPointer = (function() {
+	    function VoidPointer(type, value) {
+	      this.type = type;
+	      this.value = value;
+	    }
+
+	    return VoidPointer;
+
+	  })();
+
+	  exports.Pointer = Pointer;
+
+	  exports.VoidPointer = VoidPointer;
+
+	}).call(this);
+
 
 /***/ },
 /* 56 */
@@ -21542,11 +22952,106 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 65 */
 /***/ function(module, exports) {
 
-	if(typeof __WEBPACK_EXTERNAL_MODULE_65__ === 'undefined') {var e = new Error("Cannot find module \"iconv-lite\""); e.code = 'MODULE_NOT_FOUND'; throw e;}
 	module.exports = __WEBPACK_EXTERNAL_MODULE_65__;
 
 /***/ },
 /* 66 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_66__;
+
+/***/ },
+/* 67 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_67__;
+
+/***/ },
+/* 68 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_68__;
+
+/***/ },
+/* 69 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_69__;
+
+/***/ },
+/* 70 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_70__;
+
+/***/ },
+/* 71 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_71__;
+
+/***/ },
+/* 72 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_72__;
+
+/***/ },
+/* 73 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_73__;
+
+/***/ },
+/* 74 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_74__;
+
+/***/ },
+/* 75 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_75__;
+
+/***/ },
+/* 76 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_76__;
+
+/***/ },
+/* 77 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_77__;
+
+/***/ },
+/* 78 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_78__;
+
+/***/ },
+/* 79 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_79__;
+
+/***/ },
+/* 80 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_80__;
+
+/***/ },
+/* 81 */
+/***/ function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_81__;
+
+/***/ },
+/* 82 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(__dirname) {// Generated by CoffeeScript 1.10.0
@@ -21555,7 +23060,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  AFMFont = __webpack_require__(67);
+	  AFMFont = __webpack_require__(83);
 
 	  PDFFont = __webpack_require__(34);
 
@@ -21677,7 +23182,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	/* WEBPACK VAR INJECTION */}.call(exports, "/"))
 
 /***/ },
-/* 67 */
+/* 83 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -21853,7 +23358,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 68 */
+/* 84 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -22039,14 +23544,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 69 */
+/* 85 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var LineWrapper;
 
-	  LineWrapper = __webpack_require__(70);
+	  LineWrapper = __webpack_require__(86);
 
 	  module.exports = {
 	    initText: function() {
@@ -22380,7 +23885,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 70 */
+/* 86 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -22389,9 +23894,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
 	    hasProp = {}.hasOwnProperty;
 
-	  EventEmitter = __webpack_require__(71).EventEmitter;
+	  EventEmitter = __webpack_require__(87).EventEmitter;
 
-	  LineBreaker = __webpack_require__(72);
+	  LineBreaker = __webpack_require__(88);
 
 	  LineWrapper = (function(superClass) {
 	    extend(LineWrapper, superClass);
@@ -22639,13 +24144,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 71 */
+/* 87 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_71__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_87__;
 
 /***/ },
-/* 72 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -22654,11 +24159,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  UnicodeTrie = __webpack_require__(9);
 
-	  classTrie = new UnicodeTrie(__webpack_require__(73));
+	  classTrie = new UnicodeTrie(__webpack_require__(89));
 
-	  _ref = __webpack_require__(74), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
+	  _ref = __webpack_require__(90), BK = _ref.BK, CR = _ref.CR, LF = _ref.LF, NL = _ref.NL, CB = _ref.CB, BA = _ref.BA, SP = _ref.SP, WJ = _ref.WJ, SP = _ref.SP, BK = _ref.BK, LF = _ref.LF, NL = _ref.NL, AI = _ref.AI, AL = _ref.AL, SA = _ref.SA, SG = _ref.SG, XX = _ref.XX, CJ = _ref.CJ, ID = _ref.ID, NS = _ref.NS, characterClasses = _ref.characterClasses;
 
-	  _ref1 = __webpack_require__(75), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
+	  _ref1 = __webpack_require__(91), DI_BRK = _ref1.DI_BRK, IN_BRK = _ref1.IN_BRK, CI_BRK = _ref1.CI_BRK, CP_BRK = _ref1.CP_BRK, PR_BRK = _ref1.PR_BRK, pairTable = _ref1.pairTable;
 
 	  LineBreaker = (function() {
 	    var Break, mapClass, mapFirst;
@@ -22806,7 +24311,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 73 */
+/* 89 */
 /***/ function(module, exports) {
 
 	module.exports = {
@@ -55433,7 +56938,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 /***/ },
-/* 74 */
+/* 90 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -55524,7 +57029,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 75 */
+/* 91 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.7.1
@@ -55547,14 +57052,14 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 76 */
+/* 92 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
 	(function() {
 	  var PDFImage;
 
-	  PDFImage = __webpack_require__(77);
+	  PDFImage = __webpack_require__(93);
 
 	  module.exports = {
 	    initImages: function() {
@@ -55635,7 +57140,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 77 */
+/* 93 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -55650,11 +57155,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  fs = __webpack_require__(10);
 
-	  Data = __webpack_require__(78);
+	  Data = __webpack_require__(94);
 
-	  JPEG = __webpack_require__(79);
+	  JPEG = __webpack_require__(95);
 
-	  PNG = __webpack_require__(80);
+	  PNG = __webpack_require__(96);
 
 	  PDFImage = (function() {
 	    function PDFImage() {}
@@ -55694,7 +57199,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 78 */
+/* 94 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -55892,7 +57397,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 79 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -55976,7 +57481,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 80 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -55985,7 +57490,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  zlib = __webpack_require__(27);
 
-	  PNG = __webpack_require__(81);
+	  PNG = __webpack_require__(97);
 
 	  PNGImage = (function() {
 	    function PNGImage(data, label) {
@@ -56140,7 +57645,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 81 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Generated by CoffeeScript 1.4.0
@@ -56463,7 +57968,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 82 */
+/* 98 */
 /***/ function(module, exports) {
 
 	// Generated by CoffeeScript 1.10.0
@@ -56602,7 +58107,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 83 */
+/* 99 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */
@@ -56663,13 +58168,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 84 */
+/* 100 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jslint node: true */
 	'use strict';
 
-	var PDFImage = __webpack_require__(77);
+	var PDFImage = __webpack_require__(93);
 
 	function ImageMeasure(pdfKitDoc, imageDictionary) {
 		this.pdfKitDoc = pdfKitDoc;
@@ -56718,7 +58223,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 85 */
+/* 101 */
 /***/ function(module, exports) {
 
 	/* jslint node: true */

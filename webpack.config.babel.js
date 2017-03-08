@@ -23,6 +23,7 @@ export default {
       !request.startsWith("pdfmake") &&
       !request.startsWith("pdfkit") &&
       !request.startsWith("linebreak") &&
+      !request.startsWith("restructure") &&
       !request.startsWith("fontkit") &&
       !request.startsWith("base64-js") &&
       !request.startsWith("png-js") &&
