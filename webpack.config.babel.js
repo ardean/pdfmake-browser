@@ -30,11 +30,6 @@ export default {
     done();
   },
   module: {
-    preLoaders: [{
-      test: /\.js$/,
-      include: path.resolve(__dirname, "src"),
-      loader: "jshint-loader"
-    }],
     loaders: [{
       test: /\.js$/,
       include: [path.resolve(__dirname, "src")],
