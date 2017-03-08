@@ -1,7 +1,7 @@
 {
   "name": "pdfmake-browser",
   "description": "A pdfmake based lib to generate pdf's",
-  "version": "0.2.4",
+  "version": "0.2.10",
   "author": "Orbin",
   "keywords": [
     "pdfmake",
@@ -16,7 +16,12 @@
   "main": "dist/pdfmake-browser.js",
   "license": "MIT",
   "dependencies": {
+    "base64-js": "^1.2.0",
+    "events": "^1.1.1",
+    "fontkit": "^1.5.2",
     "lodash": "^3.1.0",
+    "pdfkit": "^0.8.0",
+    "stream": "0.0.2",
     "unicode-trie": "^0.3.1"
   },
   "devDependencies": {
@@ -25,6 +30,7 @@
     "babel-polyfill": "^6.3.14",
     "babel-preset-es2015": "^6.3.13",
     "clean-webpack-plugin": "^0.1.8",
+    "iconv-lite": "^0.4.15",
     "json-loader": "^0.5.4",
     "pdfmake": "^0.1.26",
     "string-replace-webpack-plugin": "0.0.3",
