@@ -1,7 +1,7 @@
 {
   "name": "pdfmake-browser",
   "description": "A pdfmake based lib to generate pdf's",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "author": "Orbin",
   "keywords": [
     "pdfmake",
@@ -19,6 +19,7 @@
     "base64-js": "^1.2.0",
     "events": "^1.1.1",
     "fontkit": "^1.5.2",
+    "iconv-lite": "^0.4.15",
     "lodash": "^3.1.0",
     "pdfkit": "^0.8.0",
     "stream": "0.0.2",
